@@ -55,7 +55,20 @@ You will need to modify this file and add your Couchbase Capella App Services en
 
 ## Create User Model - Domain
 
-The Couchbase Lite SDK doesn't provide the same user object, so a [new model]() was created to represent the user.  
+The Couchbase Lite SDK doesn't provide the same user object, so a [new model](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/domain/User.kt) was created to represent the user.  
+
+## Create Database Manager 
+
+Manging the Database files should be handled by a seperate class so that if you have multiple repositories you can share the same database instance.  The [DatabaseManager](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/data/DatabaseManager.kt) handles the creation of the database, the indexes required for the database, and the creation of the sync configuration. 
+
+## Update the AuthRepository
+Two new exceptions where made to handle authentication failure or conductivity issues between Capella App Services and the mobile app.  These exceptions can be found in the [AuthExceptions.kt]() file.
+
+The authentication of the app is handled by the [AuthRepository](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/data/AuthRepository.kt#L9) interface and the implementation.  
+
+Registering new users is out of scope of the conversion, so this functionaliy was removed. 
+
+Couchbase Capella App Services will be handling the authentication, so the login function was updated to use the Couchbase Capella App Services REST API to authenticate the user.
 
 ## Updating Item Domain Model
 

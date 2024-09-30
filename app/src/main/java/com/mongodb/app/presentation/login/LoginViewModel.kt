@@ -5,12 +5,9 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.mongodb.app.data.AuthRepository
-import com.mongodb.app.data.RealmAuthRepository
-import com.mongodb.app.app
-import io.realm.kotlin.mongodb.Credentials
-import io.realm.kotlin.mongodb.exceptions.ConnectionException
-import io.realm.kotlin.mongodb.exceptions.InvalidCredentialsException
-import io.realm.kotlin.mongodb.exceptions.UserAlreadyExistsException
+import com.mongodb.app.data.AppServicesAuthRepository
+import com.mongodb.app.data.ConnectionException
+import com.mongodb.app.data.InvalidCredentialsException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -36,7 +33,7 @@ enum class EventSeverity {
  * Users can either create accounts or log in with an existing one.
  */
 enum class LoginAction {
-    LOGIN, CREATE_ACCOUNT
+    LOGIN
 }
 
 /**
@@ -66,7 +63,7 @@ class LoginViewModel : ViewModel() {
     val event: Flow<LoginEvent>
         get() = _event
 
-    private val authRepository: AuthRepository = RealmAuthRepository
+    private val authRepository: AuthRepository = AppServicesAuthRepository
 
     fun switchToAction(loginAction: LoginAction) {
         _state.value = state.value.copy(action = loginAction)
@@ -80,26 +77,6 @@ class LoginViewModel : ViewModel() {
         _state.value = state.value.copy(password = password)
     }
 
-    fun createAccount(email: String, password: String) {
-        _state.value = state.value.copy(enabled = false)
-
-        CoroutineScope(Dispatchers.IO).launch {
-            runCatching {
-                authRepository.createAccount(email, password)
-            }.onSuccess {
-                _event.emit(LoginEvent.ShowMessage(EventSeverity.INFO, "User created successfully."))
-                login(email, password)
-            }.onFailure { ex: Throwable ->
-                _state.value = state.value.copy(enabled = true)
-                val message = when (ex) {
-                    is UserAlreadyExistsException -> "Failed to register. User already exists."
-                    else -> "Failed to register: ${ex.message}"
-                }
-                _event.emit(LoginEvent.ShowMessage(EventSeverity.ERROR, message))
-            }
-        }
-    }
-
     fun login(email: String, password: String, fromCreation: Boolean = false) {
         if (!fromCreation) {
             _state.value = state.value.copy(enabled = false)
@@ -107,7 +84,7 @@ class LoginViewModel : ViewModel() {
 
         CoroutineScope(Dispatchers.IO).launch {
             runCatching {
-                app.login(Credentials.emailPassword(email, password))
+                authRepository.login(email, password)
             }.onSuccess {
                 _event.emit(LoginEvent.GoToTasks(EventSeverity.INFO, "User logged in successfully."))
             }.onFailure { ex: Throwable ->
