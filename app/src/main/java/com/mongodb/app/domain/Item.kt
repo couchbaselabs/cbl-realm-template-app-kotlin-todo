@@ -1,35 +1,31 @@
 package com.mongodb.app.domain
 
-import org.mongodb.kbson.ObjectId
-import io.realm.kotlin.types.RealmObject
-import io.realm.kotlin.types.annotations.PrimaryKey
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
+import java.util.UUID
 
-class Item() : RealmObject {
-    @PrimaryKey
-    var _id: ObjectId = ObjectId()
-    var isComplete: Boolean = false
-    var summary: String = ""
-    var owner_id: String = ""
-
-    constructor(ownerId: String = "") : this() {
-        owner_id = ownerId
-    }
+@Serializable
+data class Item(
+    @Transient var id: String = UUID.randomUUID().toString(),
+    var isComplete: Boolean = false,
+    var summary: String = "",
+    var ownerId: String = "") {
 
     override fun equals(other: Any?): Boolean {
         if (other == null) return false
         if (other !is Item) return false
-        if (this._id != other._id) return false
+        if (this.id != other.id) return false
         if (this.isComplete != other.isComplete) return false
         if (this.summary != other.summary) return false
-        if (this.owner_id != other.owner_id) return false
+        if (this.ownerId != other.ownerId) return false
         return true
     }
 
     override fun hashCode(): Int {
-        var result = _id.hashCode()
+        var result = id.hashCode()
         result = 31 * result + isComplete.hashCode()
         result = 31 * result + summary.hashCode()
-        result = 31 * result + owner_id.hashCode()
+        result = 31 * result + ownerId.hashCode()
         return result
     }
 }

@@ -2,17 +2,6 @@ package com.mongodb.app.data
 
 import com.mongodb.app.domain.Item
 import com.mongodb.app.app
-import io.realm.kotlin.Realm
-import io.realm.kotlin.ext.query
-import io.realm.kotlin.mongodb.User
-import io.realm.kotlin.mongodb.exceptions.SyncException
-import io.realm.kotlin.mongodb.subscriptions
-import io.realm.kotlin.mongodb.sync.SyncConfiguration
-import io.realm.kotlin.mongodb.sync.SyncSession
-import io.realm.kotlin.mongodb.syncSession
-import io.realm.kotlin.notifications.ResultsChange
-import io.realm.kotlin.query.RealmQuery
-import io.realm.kotlin.query.Sort
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -21,14 +10,14 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * Repository for accessing Realm Sync.
+ * Repository for accessing Capella App Services
  */
 interface SyncRepository {
 
     /**
      * Returns a flow with the tasks for the current subscription.
      */
-    fun getTaskList(): Flow<ResultsChange<Item>>
+    fun getTaskList(): Flow<List<Item>>
 
     /**
      * Update the `isComplete` flag for a specific [Item].
@@ -41,27 +30,17 @@ interface SyncRepository {
     suspend fun addTask(taskSummary: String)
 
     /**
-     * Updates the Sync subscriptions based on the specified [SubscriptionType].
-     */
-    suspend fun updateSubscriptions(subscriptionType: SubscriptionType)
-
-    /**
      * Deletes a given task.
      */
     suspend fun deleteTask(task: Item)
 
     /**
-     * Returns the active [SubscriptionType].
-     */
-    fun getActiveSubscriptionType(realm: Realm? = null): SubscriptionType
-
-    /**
-     * Pauses synchronization with MongoDB. This is used to emulate a scenario of no connectivity.
+     * Pauses synchronization with Capella App Services. This is used to emulate a scenario of no connectivity.
      */
     fun pauseSync()
 
     /**
-     * Resumes synchronization with MongoDB.
+     * Resumes synchronization with Capella App Services
      */
     fun resumeSync()
 
@@ -71,7 +50,7 @@ interface SyncRepository {
     fun isTaskMine(task: Item): Boolean
 
     /**
-     * Closes the realm instance held by this repository.
+     * Closes the Database and App Services Sync Session
      */
     fun close()
 }
@@ -79,9 +58,7 @@ interface SyncRepository {
 /**
  * Repo implementation used in runtime.
  */
-class RealmSyncRepository(
-    onSyncError: (session: SyncSession, error: SyncException) -> Unit
-) : SyncRepository {
+class CouchbaseSyncRepository() : SyncRepository {
 
     private val realm: Realm
     private val config: SyncConfiguration
@@ -124,7 +101,7 @@ class RealmSyncRepository(
 
     override suspend fun addTask(taskSummary: String) {
         val task = Item().apply {
-            owner_id = currentUser.id
+            ownerId = currentUser.id
             summary = taskSummary
         }
         realm.write {
@@ -170,7 +147,7 @@ class RealmSyncRepository(
         realm.syncSession.resume()
     }
 
-    override fun isTaskMine(task: Item): Boolean = task.owner_id == currentUser.id
+    override fun isTaskMine(task: Item): Boolean = task.ownerId == currentUser.id
 
     override fun close() = realm.close()
 
@@ -193,7 +170,7 @@ class MockRepository : SyncRepository {
     override fun getActiveSubscriptionType(realm: Realm?): SubscriptionType = SubscriptionType.ALL
     override fun pauseSync() = Unit
     override fun resumeSync() = Unit
-    override fun isTaskMine(task: Item): Boolean = task.owner_id == MOCK_OWNER_ID_MINE
+    override fun isTaskMine(task: Item): Boolean = task.ownerId == MOCK_OWNER_ID_MINE
     override fun close() = Unit
 
     companion object {
@@ -207,7 +184,7 @@ class MockRepository : SyncRepository {
             this.isComplete = index % 3 == 0
 
             // Make every other task mine in preview
-            this.owner_id = when {
+            this.ownerId = when {
                 index % 2 == 0 -> MOCK_OWNER_ID_MINE
                 else -> MOCK_OWNER_ID_OTHER
             }

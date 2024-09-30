@@ -23,6 +23,7 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.4"
     }
+    namespace = "com.mongodb.app"
 }
 
 dependencies {
@@ -42,5 +43,6 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.5.1")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0")
+    implementation ("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
     implementation("com.couchbase.lite:couchbase-lite-android-ktx:3.2.0")
 }
