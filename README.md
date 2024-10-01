@@ -58,7 +58,7 @@ The Module [build.gradle.kts](https://github.com/couchbaselabs/cbl-realm-templat
 
 The original source code had the configuration for Atlas App Services stored in the atlasConfig.xml file located in the app/src/main/res/values folder.  This file was removed and the configuration for Capella App Services was added in the [capellaConfig.xml](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/res/values/capellaConfig.xml) file in the app/src/main/res/value folder.  
 
-You will need to modify this file to add your Couchbase Capella App Services endpoint URL, as outlined in the[Capella](./Capella.md) setup instructions.
+You will need to modify this file to add your Couchbase Capella App Services endpoint URL, as outlined in the [Capella](./Capella.md) setup instructions.
 
 ## TemplateApp changes and CBLiteApp
 
