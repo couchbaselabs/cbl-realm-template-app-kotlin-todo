@@ -1,0 +1,82 @@
+# Setup Couchbase Capella App Services
+This guide provides step-by-step instructions for configuring a Couchbase Capella App Services instance, which the mobile application will utilize to store and retrieve data from the cloud.  
+
+## Sign up for free account
+
+A full set of directions for setting up a free trial can be found [here](https://docs.couchbase.com/cloud/get-started/create-account.html).
+
+## Setup App Services instance
+
+Once you have followed the directions for setting up your cluster, follow the directions for setting up App Services [here](https://docs.couchbase.com/cloud/get-started/create-account.html#app-services).
+
+## Create Scope/Collection for Data Storage
+
+When you log into Capella you should be at the Operational Cluster tab.  Click on cluster listed in the provided cluster listing.  The Home tab appear and a listing of options should be presented. 
+
+Click on the Data Tools tab to open the Data Tools section of your cluster.  When the Data Tools renders, click the + Create button on the left side of the navigation menu to create a new Scope and Collection. 
+
+The Create a Bucket, Scope, and Collection dialog will appear.  Enter the following information:
+
+1.  Select Existing and make sure the bucket is selected is travel-sample
+
+2. For Scope select New and enter the name of `data`
+
+3. For Collection select New and enter the name `tasks`
+
+Click the Create button to create the new Scope and Collection.
+
+## Setup App Services Endpoint
+
+You should still be on the Data Tools tab from the previous steps.  Click the App Services tab and select your created App Service from the Setup App Service Instance step.  The App Endpoints listing should appear.  Click on the + Create App Endpoint to create a new endpoint.
+
+When the Create App Endpoint screen appears enter the following information:
+
+- For the Name field enter `tasks`
+- For the Bucket, select travel-sample
+- For the Scope, select data
+- Under Choose collections to link, select the Link option for the tasks collection
+
+Click the Create button to create the new App Endpoint.  Note it may take a few minutes for your App Endpoint to be created. 
+
+## Setup App Endpoint Users
+
+From the App Endpoints list, click on your newly created App Endpoint `tasks`.
+
+From the Access Control and Validation screen click the link at the top below the header to `Resume app endpoint`.  Note that resuming the app endpoint can take up to 60 seconds.
+
+Click on the App Users tab from the navigation menu on the left and then click the + Create App Users button.
+
+Enter the following information:
+
+- For the App User Name enter: `demo1@example.com`
+- For the App User Password enter:  `P@ssw0rd12`
+
+Click the Chevron for Configure Access Grants.  Now under the Assign Channels enter the channel name `tasks` under the Admin Channels column.  Click the Create App User button to create the App User.
+
+Follow these steps to create a second App User with the following information:
+
+- For the App User Name enter: `demo2@example.com`
+- For the App User Password enter:  `P@ssw0rd12`
+
+## Get App Endpoint Connection Information
+
+From the App Endpoints section, click on the Connect tab.  The Connect Information screen will appear.  
+
+You need to copy the Public Connection URL that is provided.  This will be used in the mobile application to connect to the App Endpoint.  There is a paper icon to the right of the URL that will copy the URL to your clipboard.
+
+Now open the `capellaConfig.xml` file, which is located in the app/src/main/res/values folder.
+
+Update the `capella_app_endpoint_url` value with the Public Connection URL you copied from the App Endpoint.  
+
+When done it should look something similar to the following:
+
+```xml
+<resources>
+  <string name="capella_app_endpoint_url">wss://xxxxxx.apps.cloud.couchbase.com:4984/tasks</string>
+  <string name="capella_url">https://cloud.capella.com</string>
+</resources>
+```
+
+> **WARNING**
+> Do NOT copy the URL from the above example as it will not work.
+> 

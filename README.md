@@ -8,11 +8,13 @@ This repository provides a converted version of the same application using Couch
 >The original application is a basic To Do list.  The original source code has it's own opinionated way of implementing an Android application and communicating between different layers.  This conversion is by no means a best practice for Android development or a show case on how to properly communicate between layers of an application.  It's more of an example of the process that a developer will have to go through to convert an application from one SDK to another.
 >
 
-## Capella Configuration
+# Capella Configuration
 
-You will need to have an Couchbase Capella App Services setup prior to running this application.  Directions on how to setup Couchbase Capella App Services can be found in the [Capella.md](./Capella.md) file.
+You will need to have an Couchbase Capella App Services setup prior to running this application.  Directions on how to setup Couchbase Capella App Services and update the configuration file can be found in the [Capella.md](./Capella.md) file.  Please complete these steps first before running the application or the application **WILL NOT** fuction properly.
 
 # Android App Conversion 
+
+The following is information on the application conversion process and what files were changed.
 
 ## Grale File Changes
 The Project [build.gradle.kts](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/build.gradle.kts) file required adding the maven location for Couchbase Lite's Kotlin SDK to be added to the list of repositories found under the buildscript section and the repositories under the allprojects section.
@@ -52,17 +54,11 @@ The Module [build.gradle.kts](https://github.com/couchbaselabs/cbl-realm-templat
 
 The original source code had the configuration for Atlas App Services stored in the atlasConfig.xml file located in the app/src/main/res/values folder.  This file was removed and the configuration for Capella App Services is now located in the [capellaConfig.xml](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/res/values/capellaConfig.xml) file in the app/src/main/res/value folder.  
 
-```xml
-<resources>
-  <string name="capella_app_endpoint_url">PUT YOUR APP ENDPOINT URL HERE</string>
-</resources>
-```
-
-You will need to modify this file and add your Couchbase Capella App Services endpoint URL, which you should have from following the [Capella](./Capella.md) setup directions.
+You will need to modify this file and add your Couchbase Capella App Services endpoint URL, which you should have done from following the [Capella](./Capella.md) setup directions.
 
 ## TemplateApp changes and CBLiteApp
 
-The original source code had the Android [Application](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/TemplateApp.kt#L17) inherriting from a custom TemplateApp that creates a local io.realm.kotlin.mongodb.App that is used to reference features in the Realm SDK like authentication and whom is the current authenticated user.  This becomes a global variable for the entire app and because of this pattern, it is required to touch most of the code that uses the app reference to be updated. 
+The original source code had the Android [Application](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/TemplateApp.kt#L17) inherriting from a custom TemplateApp that creates a local io.realm.kotlin.mongodb.App.  The local app variable is used to reference features in the Realm SDK like authentication and whom is the current authenticated user.  Because this is defined in the Application itself, it becomes a global variable for the entire app.  This usage pattern will require a developer to update most of the code that uses the app reference.  There are other ways to provide this via patterns like Dependency Injection, but for the sake of this conversion, the same pattern was used.
 
 The TemplateApp was updated to [initialize](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/TemplateApp.kt#L22) the Couchbase Lite SDK, which is required for Android specifically and should be called before any Intents use the Couchbase Lite SDK for Android.
 
@@ -200,7 +196,7 @@ override fun close(){
 
 ### deleteTask method
 
-The deleteTask method removes a task from the database.  This is done by retrieving the document from the database using the collection.getDocument method and then calling the collection delete method.
+The deleteTask method removes a task from the database.  This is done by retrieving the document from the database using the collection.getDocument method and then calling the collection delete method.  A check was added so that only the owner of the task can delete the task.
 
 ```kotlin
 override suspend fun deleteTask(task: Item) {
@@ -208,7 +204,13 @@ override suspend fun deleteTask(task: Item) {
    try {
      val doc = collection.getDocument(task.id)
      doc?.let {
-      collection.delete(it)
+      //handle security of the owner only being able to delete their own tasks
+      val ownerId = doc.getString("ownerId")
+      if (ownerId != task.ownerId) {
+       onError(IllegalStateException("User does not have permission to delete this task"))
+      } else {
+       collection.delete(it)
+      }
      }
    } catch (e: Exception) {
      onError(e)
@@ -269,7 +271,7 @@ If a developer wanted to emulate the ResultsChange API from Realm, they could us
 
 ### toggleIsComplete method
 
-The toggleIsComplete method is used to update a task.  This is done by retrieving the document from the database using the collection.getDocument method and then updating the document with the new value for the isComplete property.
+The toggleIsComplete method is used to update a task.  This is done by retrieving the document from the database using the collection.getDocument method and then updating the document with the new value for the isComplete property.  A check is added so that only the owner of the task can update the task.
 
 ```kotlin
 override suspend fun toggleIsComplete(task: Item) {
@@ -277,10 +279,16 @@ override suspend fun toggleIsComplete(task: Item) {
   try {
    val doc = collection.getDocument(task.id)
    doc?.let {
-    val isComplete = doc.getBoolean("isComplete")
-    val mutableDoc = doc.toMutable()
-    mutableDoc.setBoolean("isComplete", !isComplete )
-    collection.save(mutableDoc)
+    //handle security of the owner only being able to update their own tasks
+    val ownerId = doc.getString("ownerId")
+    if (ownerId != task.ownerId) {
+      onError(IllegalStateException("User does not have permission to update this task"))
+    } else {
+      val isComplete = doc.getBoolean("isComplete")
+      val mutableDoc = doc.toMutable()
+      mutableDoc.setBoolean("isComplete", !isComplete)
+      collection.save(mutableDoc)
+    }
    }
   } catch (e: Exception) {
     onError(e)
@@ -291,7 +299,7 @@ override suspend fun toggleIsComplete(task: Item) {
 
 ### TaskViewModel changes
 
-The TaskViewModel init method was updated to use the new LiveQuery data. 
+The TaskViewModel init method was updated to use the new LiveQuery data.  It also defaults the view to view only the current logged in users tasks. 
 
 ```kotlin
 init {
@@ -304,6 +312,24 @@ init {
  }
 }
 ```
+
+### TaskAppToolbar.kt
+
+The method of logging out of the application had to be updated to set the currentUser to null before running the viewModel logOut method. 
+
+```kotlin
+CoroutineScope(Dispatchers.IO).launch {
+ runCatching {
+   app.currentUser = null
+ }.onSuccess {
+   viewModel.logOut()
+ }.onFailure {
+   viewModel.error(ToolbarEvent.Error("Log out failed", it))
+ }
+}
+```
+
+
 
 
 

@@ -73,7 +73,6 @@ class ComposeItemActivity : ComponentActivity() {
         lifecycleScope.launch {
             // Catch write permission errors and notify user. This is just a 2nd line of defense
             // since we prevent users from modifying someone else's tasks
-            // TODO the SDK does not have an enum for this type of error yet so make sure to update this once it has been added
             if (error.message?.contains("CompensatingWrite") == true) {
                 Toast.makeText(this@ComposeItemActivity, getString(R.string.permissions_error), Toast.LENGTH_SHORT)
                     .show()
@@ -173,7 +172,7 @@ class ComposeItemActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        repository?.close()
+        repository.close()
     }
 }
 
@@ -186,26 +185,6 @@ fun TaskListScaffold(
     subscriptionTypeViewModel: SubscriptionTypeViewModel,
     taskViewModel: TaskViewModel
 ) {
-    val annotatedLinkString = buildAnnotatedString {
-        val linkString = "To see your changes in Atlas, tap here."
-        val startIndex = linkString.indexOf("here")
-        val endIndex = startIndex + 4
-        append(linkString)
-        addStyle(
-            style = SpanStyle(
-                color = Color.Blue,
-                textDecoration = TextDecoration.Underline
-            ), start = startIndex, end = endIndex
-        )
-        addStringAnnotation(
-            tag = "URL",
-            annotation = stringResource(id = R.string.capella_url),
-            start = startIndex,
-            end = endIndex
-        )
-    }
-    val uriHandler = LocalUriHandler.current
-
     Scaffold(
         topBar = { TaskAppToolbar(toolbarViewModel) },
         bottomBar = {
@@ -216,25 +195,6 @@ fun TaskListScaffold(
                     modifier = Modifier.align(Alignment.Top)
                         .padding(0.dp, 0.dp, 0.dp, 0.dp),
                 ) {
-                    ClickableText(
-                        modifier = Modifier
-                            .background(Color.LightGray)
-                            .padding(0.dp, 44.dp, 0.dp, 0.dp)
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth(),
-                        text = annotatedLinkString,
-                        style = TextStyle(
-                            textAlign = TextAlign.Center,
-                            fontSize = 16.sp
-                        ),
-                        onClick = {
-                            annotatedLinkString
-                                .getStringAnnotations("URL", it, it)
-                                .firstOrNull()?.let { stringAnnotation ->
-                                    uriHandler.openUri(stringAnnotation.item)
-                                }
-                        }
-                    )
                     Text(
                         text = stringResource(R.string.sync_message),
                         textAlign = TextAlign.Center,

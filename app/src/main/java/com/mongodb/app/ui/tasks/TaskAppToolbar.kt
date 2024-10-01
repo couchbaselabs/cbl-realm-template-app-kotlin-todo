@@ -61,7 +61,7 @@ fun TaskAppToolbar(viewModel: ToolbarViewModel) {
                 onClick = {
                     CoroutineScope(Dispatchers.IO).launch {
                         runCatching {
-                            app.currentUser?.logOut()
+                            app.currentUser = null
                         }.onSuccess {
                             viewModel.logOut()
                         }.onFailure {

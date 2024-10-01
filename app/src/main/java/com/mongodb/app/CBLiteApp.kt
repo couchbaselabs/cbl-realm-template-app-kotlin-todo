@@ -27,10 +27,15 @@ class CBLiteApp(val endpointUrl: String, val filesDir: String){
     var currentUser: User? = null
 
     suspend fun login(username: String, password: String) {
-        if (!isUrlReachable(endpointUrl)) {
+        val httpsUrl = endpointUrl
+                        .replace("wss://", "https://")
+        val checkUrl = httpsUrl
+                        .replace("/tasks", "/")
+
+        if (!isUrlReachable(checkUrl)) {
             throw ConnectionException("Could not reach the endpoint URL.")
         }
-        val url = URL(endpointUrl)
+        val url = URL(httpsUrl)
         val connection = withContext(Dispatchers.IO) {
             url.openConnection()
         } as HttpURLConnection

@@ -1,7 +1,9 @@
 package com.mongodb.app.data
 
+import com.couchbase.lite.BasicAuthenticator
 import com.couchbase.lite.Database
 import com.couchbase.lite.Collection
+import com.couchbase.lite.CollectionConfiguration
 import com.couchbase.lite.CouchbaseLiteException
 import com.couchbase.lite.DatabaseConfigurationFactory
 import com.couchbase.lite.ListenerToken
@@ -109,6 +111,7 @@ class CouchbaseSyncRepository(
             onError(IllegalStateException("User must be logged in to initialize the repository"))
         }
         try {
+            //setup database
             val dbConfig =
                 DatabaseConfigurationFactory.newConfig(app.filesDir)
             app.currentUser?.let { currentUser ->
@@ -116,14 +119,30 @@ class CouchbaseSyncRepository(
                     .replace("@", "-")
                     .lowercase(Locale.getDefault())
                 this.database = Database("items${username}", dbConfig)
-                this.collection = this.database.createCollection("items", "data")
+
+                //create collection
+                val checkCollection = this.database.getCollection("tasks", "data")
+                if (checkCollection == null) {
+                    this.collection = this.database.createCollection("tasks", "data")
+                } else {
+                    this.collection = checkCollection
+                }
                 val replicatorConfig = ReplicatorConfigurationFactory
                     .newConfig(
                         target = URLEndpoint(URI(app.endpointUrl)),
                         type = ReplicatorType.PUSH_AND_PULL,
                         continuous = true
                     )
-                replicatorConfig.collections.add(this.collection)
+
+                //configure collections
+                val collectionConfig = CollectionConfiguration()
+                replicatorConfig.addCollection(collection, collectionConfig)
+
+                //add authentication
+                val auth = BasicAuthenticator(currentUser.username, currentUser.password.toCharArray())
+                replicatorConfig.authenticator = auth
+
+                //create replicator
                 this.replicator = Replicator(replicatorConfig)
 
                 //setup status change listener in case of errors
@@ -181,7 +200,14 @@ class CouchbaseSyncRepository(
             try {
                 val doc = collection.getDocument(task.id)
                 doc?.let {
-                    collection.delete(it)
+                    //handle security of the owner only being able to delete their own tasks
+                    val ownerId = doc.getString("ownerId")
+                    if (ownerId != task.ownerId)
+                    {
+                        onError(IllegalStateException("User does not have permission to delete this task"))
+                    } else {
+                        collection.delete(it)
+                    }
                 }
             } catch (e: Exception) {
                 onError(e)
@@ -239,10 +265,17 @@ class CouchbaseSyncRepository(
             try {
                 val doc = collection.getDocument(task.id)
                 doc?.let {
-                    val isComplete = doc.getBoolean("isComplete")
-                    val mutableDoc = doc.toMutable()
-                    mutableDoc.setBoolean("isComplete", !isComplete )
-                    collection.save(mutableDoc)
+                    //handle security of the owner only being able to update their own tasks
+                    val ownerId = doc.getString("ownerId")
+                    if (ownerId != task.ownerId)
+                    {
+                        onError(IllegalStateException("User does not have permission to update this task"))
+                    } else {
+                        val isComplete = doc.getBoolean("isComplete")
+                        val mutableDoc = doc.toMutable()
+                        mutableDoc.setBoolean("isComplete", !isComplete)
+                        collection.save(mutableDoc)
+                    }
                 }
             } catch (e: Exception) {
                 onError(e)

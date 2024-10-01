@@ -44,6 +44,7 @@ class ToolbarViewModel(
 
     fun logOut() {
         viewModelScope.launch {
+            repository?.close()
             _toolbarEvent.emit(ToolbarEvent.LogOut)
         }
     }

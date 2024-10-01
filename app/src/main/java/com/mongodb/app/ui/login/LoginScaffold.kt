@@ -111,26 +111,6 @@ fun LoginScaffold(loginViewModel: LoginViewModel) {
                         Spacer(modifier = Modifier.height(40.dp))
 
                         // Switch between login and create user
-                        TextButton(
-                            onClick = {
-                                val state = loginViewModel.state.value
-                                when (state.action) {
-                                    LoginAction.LOGIN -> loginViewModel.switchToAction(LoginAction.LOGIN)
-                                }
-                            }
-                        ) {
-                            val actionText = when (loginViewModel.state.value.action) {
-                                LoginAction.LOGIN -> stringResource(R.string.does_not_have_account)
-                            }
-                            Text(
-                                text = actionText,
-                                modifier = Modifier.fillMaxWidth(USABLE_WIDTH),
-                                textAlign = TextAlign.Center,
-                                color = Blue
-                            )
-                        }
-
-                        // Text with clarification on Atlas Cloud account vs Device Sync account
                         Text(
                             text = stringResource(R.string.account_clarification),
                             modifier = Modifier.fillMaxWidth(USABLE_WIDTH),
