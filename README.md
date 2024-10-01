@@ -194,6 +194,18 @@ override fun close(){
 }
 ```
 
+### Handling Security of Updates/Delete
+
+In the original app, Realm was handling the security of updates to validate only the current logged in user can update it's own tasks, but no others.  So when using a different subscription to see all others tasks, they only have read-only access to the objects.  
+
+Couchbase Lite doesn't have the same security model as meantioned earlier to the Realm SDK and Subscription model.  Here are the two popular ways to handle this:
+
+1. You can do custom code in your application to validate that writes to the database are only allowed by users based on custom app business logic.
+
+2. You could allow the write to the database even though the user doesn't have access and then let the replicator sync the changes.  In the App Services [Access Control and Data Validation](https://docs.couchbase.com/cloud/app-services/deployment/access-control-data-validation.html) [sync function](https://docs.couchbase.com/cloud/app-services/deployment/access-control-data-validation.html) you could check the security there and then deny the write.  You can use a Custom [Replication Conflict Resolution](https://docs.couchbase.com/couchbase-lite/current/android/conflict.html#custom-conflict-resolution) to receive this in your applications code and then revert the change.
+
+Both options are viable but with option 2 if your app is offline for long periods of time, this might not fit your security requirements.
+
 ### deleteTask method
 
 The deleteTask method removes a task from the database.  This is done by retrieving the document from the database using the collection.getDocument method and then calling the collection delete method.  A check was added so that only the owner of the task can delete the task.
