@@ -63,6 +63,7 @@ class LoginViewModel : ViewModel() {
     val event: Flow<LoginEvent>
         get() = _event
 
+    //switched to App Services Auth Repository
     private val authRepository: AuthRepository = AppServicesAuthRepository
 
     fun switchToAction(loginAction: LoginAction) {
@@ -81,12 +82,18 @@ class LoginViewModel : ViewModel() {
         if (!fromCreation) {
             _state.value = state.value.copy(enabled = false)
         }
-
         CoroutineScope(Dispatchers.IO).launch {
             runCatching {
                 authRepository.login(email, password)
             }.onSuccess {
-                _event.emit(LoginEvent.GoToTasks(EventSeverity.INFO, "User logged in successfully."))
+                //get a user and send it to the intent so it can be used to make the databaseManager
+                // and setup the repositories for working with the database items
+                    _event.emit(
+                        LoginEvent.GoToTasks(
+                            EventSeverity.INFO,
+                            "User logged in successfully."
+                        )
+                    )
             }.onFailure { ex: Throwable ->
                 _state.value = state.value.copy(enabled = true)
                 val message = when (ex) {

@@ -21,7 +21,7 @@ sealed class ToolbarEvent {
 }
 
 class ToolbarViewModel(
-    private val repository: SyncRepository
+    private val repository: SyncRepository?
 ) : ViewModel() {
 
     private val _offlineMode: MutableState<Boolean> = mutableStateOf(false)
@@ -34,12 +34,12 @@ class ToolbarViewModel(
 
     fun goOffline() {
         _offlineMode.value = true
-        repository.pauseSync()
+        repository?.pauseSync()
     }
 
     fun goOnline() {
         _offlineMode.value = false
-        repository.resumeSync()
+        repository?.resumeSync()
     }
 
     fun logOut() {

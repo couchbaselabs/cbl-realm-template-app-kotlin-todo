@@ -1,3 +1,4 @@
 <resources>
   <string name="capella_app_endpoint_url">PUT YOUR APP ENDPOINT URL HERE</string>
+  <string name="capella_url">https://cloud.capella.com</string>
 </resources>

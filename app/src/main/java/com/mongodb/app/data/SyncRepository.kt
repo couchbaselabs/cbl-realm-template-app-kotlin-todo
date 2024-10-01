@@ -1,7 +1,10 @@
 package com.mongodb.app.data
 
+import com.couchbase.lite.Database
+import com.couchbase.lite.LogDomain
+import com.couchbase.lite.LogLevel
+import com.couchbase.lite.Replicator
 import com.mongodb.app.domain.Item
-import com.mongodb.app.app
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -58,22 +61,25 @@ interface SyncRepository {
 /**
  * Repo implementation used in runtime.
  */
-class CouchbaseSyncRepository() : SyncRepository {
-
-    private val realm: Realm
-    private val config: SyncConfiguration
-    private val currentUser: User
-        get() = app.currentUser!!
+class CouchbaseSyncRepository(
+    onError: (error: Exception) -> Unit
+) : SyncRepository {
+    private val database: Database
+    private val replicator:Replicator
 
     init {
+        //set Couchbase Lite logging levels
+        Database.log.console.domains = LogDomain.ALL_DOMAINS
+        Database.log.console.level = LogLevel.DEBUG
+
         config = SyncConfiguration.Builder(currentUser, setOf(Item::class))
             .initialSubscriptions { realm ->
                 // Subscribe to the active subscriptionType - first time defaults to MINE
                 val activeSubscriptionType = getActiveSubscriptionType(realm)
                 add(getQuery(realm, activeSubscriptionType), activeSubscriptionType.name)
             }
-            .errorHandler { session: SyncSession, error: SyncException ->
-                onSyncError.invoke(session, error)
+            .errorHandler { error: Exception ->
+                onError.invoke(error)
             }
             .waitForInitialRemoteData()
             .build()
@@ -162,7 +168,7 @@ class CouchbaseSyncRepository() : SyncRepository {
  * Mock repo for generating the Compose layout preview.
  */
 class MockRepository : SyncRepository {
-    override fun getTaskList(): Flow<ResultsChange<Item>> = flowOf()
+    override fun getTaskList(): Flow<List<Item>> = flowOf()
     override suspend fun toggleIsComplete(task: Item) = Unit
     override suspend fun addTask(taskSummary: String) = Unit
     override suspend fun updateSubscriptions(subscriptionType: SubscriptionType) = Unit

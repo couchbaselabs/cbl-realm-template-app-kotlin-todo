@@ -21,16 +21,8 @@ import kotlinx.coroutines.launch
 class ComposeLoginActivity : ComponentActivity() {
 
     private val loginViewModel: LoginViewModel by viewModels()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Fast-track task list screen if we are logged in
-        if (app.currentUser != null) {
-            startActivity(Intent(this, ComposeItemActivity::class.java))
-            finish()
-            return
-        }
 
         lifecycleScope.launch {
             // Subscribe to navigation and message-logging events
@@ -39,7 +31,6 @@ class ComposeLoginActivity : ComponentActivity() {
                     when (event) {
                         is LoginEvent.GoToTasks -> {
                             event.process()
-
                             val intent = Intent(this@ComposeLoginActivity, ComposeItemActivity::class.java)
                             startActivity(intent)
                             finish()
@@ -48,7 +39,6 @@ class ComposeLoginActivity : ComponentActivity() {
                     }
                 }
         }
-
         setContent {
             MyApplicationTheme {
                 LoginScaffold(loginViewModel)
@@ -74,8 +64,8 @@ fun LoginActivityPreview() {
     MyApplicationTheme {
         val viewModel = LoginViewModel().also {
             it.switchToAction(LoginAction.LOGIN)
-            it.setEmail("test@test.com")
-            it.setPassword("123456")
+            it.setEmail("demo@example.com")
+            it.setPassword("P@ssw0rd12")
         }
         LoginScaffold(viewModel)
     }

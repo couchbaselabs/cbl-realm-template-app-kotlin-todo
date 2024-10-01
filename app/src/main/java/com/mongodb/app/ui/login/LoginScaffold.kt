@@ -100,14 +100,9 @@ fun LoginScaffold(loginViewModel: LoginViewModel) {
                                         state.email,
                                         state.password
                                     )
-                                    LoginAction.CREATE_ACCOUNT -> loginViewModel.createAccount(
-                                        state.email,
-                                        state.password
-                                    )
                                 }
                             }) {
                             val actionText = when (loginViewModel.state.value.action) {
-                                LoginAction.CREATE_ACCOUNT -> stringResource(R.string.create_account)
                                 LoginAction.LOGIN -> stringResource(R.string.log_in)
                             }
                             Text(actionText)
@@ -120,13 +115,11 @@ fun LoginScaffold(loginViewModel: LoginViewModel) {
                             onClick = {
                                 val state = loginViewModel.state.value
                                 when (state.action) {
-                                    LoginAction.LOGIN -> loginViewModel.switchToAction(LoginAction.CREATE_ACCOUNT)
-                                    LoginAction.CREATE_ACCOUNT -> loginViewModel.switchToAction(LoginAction.LOGIN)
+                                    LoginAction.LOGIN -> loginViewModel.switchToAction(LoginAction.LOGIN)
                                 }
                             }
                         ) {
                             val actionText = when (loginViewModel.state.value.action) {
-                                LoginAction.CREATE_ACCOUNT -> stringResource(R.string.already_have_account)
                                 LoginAction.LOGIN -> stringResource(R.string.does_not_have_account)
                             }
                             Text(

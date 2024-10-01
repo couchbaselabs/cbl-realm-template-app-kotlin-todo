@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
@@ -48,8 +47,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
+
+import com.mongodb.app.data.CouchbaseSyncRepository
 import com.mongodb.app.data.MockRepository
-import com.mongodb.app.data.RealmSyncRepository
 import com.mongodb.app.data.SyncRepository
 import com.mongodb.app.presentation.tasks.AddItemEvent
 import com.mongodb.app.presentation.tasks.AddItemViewModel
@@ -68,7 +68,7 @@ import kotlinx.coroutines.launch
 
 class ComposeItemActivity : ComponentActivity() {
 
-    private val repository = RealmSyncRepository { _, error ->
+    private val repository = CouchbaseSyncRepository { error ->
         // Sync errors come from a background thread so route the Toast through the UI thread
         lifecycleScope.launch {
             // Catch write permission errors and notify user. This is just a 2nd line of defense
@@ -94,9 +94,9 @@ class ComposeItemActivity : ComponentActivity() {
         TaskViewModel.factory(repository, this)
     }
 
+    @Throws(IllegalArgumentException::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         lifecycleScope.launch {
             taskViewModel.event
                 .collect {
@@ -114,6 +114,7 @@ class ComposeItemActivity : ComponentActivity() {
                 .collect { toolbarEvent ->
                     when (toolbarEvent) {
                         ToolbarEvent.LogOut -> {
+                            //close database and sync session
                             startActivity(Intent(this@ComposeItemActivity, ComposeLoginActivity::class.java))
                             finish()
                         }
@@ -172,7 +173,7 @@ class ComposeItemActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        repository.close()
+        repository?.close()
     }
 }
 
@@ -198,7 +199,7 @@ fun TaskListScaffold(
         )
         addStringAnnotation(
             tag = "URL",
-            annotation = stringResource(id = R.string.realm_data_explorer_link),
+            annotation = stringResource(id = R.string.capella_url),
             start = startIndex,
             end = endIndex
         )
