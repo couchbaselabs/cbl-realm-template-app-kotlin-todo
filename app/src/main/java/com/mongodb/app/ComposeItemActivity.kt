@@ -229,7 +229,7 @@ fun TaskListScaffold(
             Column {
                 Spacer(modifier = Modifier.height(61.dp))
                 Divider(color = Color.Red, modifier = Modifier.fillMaxWidth())
-                ShowMyOwnTasks(subscriptionTypeViewModel, toolbarViewModel)
+                ShowMyOwnTasks(subscriptionTypeViewModel, toolbarViewModel, taskViewModel)
                 TaskList(repository, taskViewModel)
 
             }

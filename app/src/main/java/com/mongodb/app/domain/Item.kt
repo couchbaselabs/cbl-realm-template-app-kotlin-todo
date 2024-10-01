@@ -13,7 +13,7 @@ data class ItemDao(var item: Item)
 @Keep
 @Serializable
 data class Item(
-    @Transient var id: String = UUID.randomUUID().toString(),
+    var id: String = UUID.randomUUID().toString(),
     var isComplete: Boolean = false,
     var summary: String = "",
     var ownerId: String = "") {

@@ -1,6 +1,7 @@
 package com.mongodb.app.ui.login
 
 import android.annotation.SuppressLint
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +18,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -46,7 +48,16 @@ fun LoginScaffold(loginViewModel: LoginViewModel) {
                         .fillMaxWidth()
                 ) {
                     Text(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onDoubleTap = {
+                                        loginViewModel.setEmail("demo1@example.com")
+                                        loginViewModel.setPassword("P@ssw0rd12")
+                                    }
+                                )
+                            },
                         textAlign = TextAlign.Center,
                         text = stringResource(R.string.app_name),
                         fontSize = 24.sp,

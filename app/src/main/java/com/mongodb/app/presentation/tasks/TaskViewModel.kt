@@ -38,6 +38,16 @@ class TaskViewModel constructor(
         }
     }
 
+    fun updateQuerySubscriptionModel(updatedSubscriptionType: SubscriptionType) {
+        viewModelScope.launch {
+            repository.getTaskList(updatedSubscriptionType)
+                .collect { event: List<Item> ->
+                    taskListState.clear()
+                    taskListState.addAll(event)
+                }
+        }
+    }
+
     fun toggleIsComplete(task: Item) {
         CoroutineScope(Dispatchers.IO).launch {
             repository.toggleIsComplete(task)

@@ -8,6 +8,8 @@ This repository provides a converted version of the same application using Couch
 >The original application is a basic To Do list.  The original source code has it's own opinionated way of implementing an Android application and communicating between different layers.  This conversion is by no means a best practice for Android development or a show case on how to properly communicate between layers of an application.  It's more of an example of the process that a developer will have to go through to convert an application from one SDK to another.
 >
 
+Some minior UI changes were made to remove wording about Realm and replaced with Couchbase.
+
 # Capella Configuration
 
 You will need to have an Couchbase Capella App Services setup prior to running this application.  Directions on how to setup Couchbase Capella App Services and update the configuration file can be found in the [Capella.md](./Capella.md) file.  Please complete these steps first before running the application or the application **WILL NOT** fuction properly.
@@ -80,7 +82,7 @@ The [Couchbase Lite SDK](https://docs.couchbase.com/couchbase-lite/current/andro
 
 The authentication of the app is handled by the [AuthRepository](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/data/AuthRepository.kt#L9) interface.  The implementation [AppEndpointAuthRepository](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/data/AuthRepository.kt#L19) was renamed to [AppServicesAuthRepository](AppServicesAuthRepository). 
 
-Authentication process is done via the Couchbase Capella App Services Endpoint [REST API](https://docs.couchbase.com/cloud/app-services/references/rest_api_admin.html) in the CBLiteApp [login function](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/CBLiteApp.kt#L15), validating the username and password provided can authenticate with the endpoint or throwing an exception if they can't. The decision to put the login method in CBLiteApp was made so it matched Realm's SDK pattern and thus having to change less code. 
+Authentication process is done via the Couchbase Capella App Services Endpoint [REST API](https://docs.couchbase.com/cloud/app-services/references/rest_api_admin.html) in the CBLiteApp [login function](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/CBLiteApp.kt#L15), validating the username and password provided can authenticate with the endpoint or throwing an exception if they can't. 
 
 The login method was added to the [CBLiteApp](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/CBLiteApp.kt#L15) to resolve the SDK differences between Realm SDK and Couchbase Lite SDK without having to refactor large chunks of code. 
 
@@ -205,6 +207,8 @@ Couchbase Lite doesn't have the same security model as meantioned earlier to the
 2. You could allow the write to the database even though the user doesn't have access and then let the replicator sync the changes.  In the App Services [Access Control and Data Validation](https://docs.couchbase.com/cloud/app-services/deployment/access-control-data-validation.html) [sync function](https://docs.couchbase.com/cloud/app-services/deployment/access-control-data-validation.html) you could check the security there and then deny the write.  You can use a Custom [Replication Conflict Resolution](https://docs.couchbase.com/couchbase-lite/current/android/conflict.html#custom-conflict-resolution) to receive this in your applications code and then revert the change.
 
 Both options are viable but with option 2 if your app is offline for long periods of time, this might not fit your security requirements.  Because this app offers an offline mode, option 1 was selected for the security model in the conversion. 
+
+To further harden the security of this app a field could be added to track the modified by userId seperate from the ownerId field.  Then the App Service sync script could check the two fields and if they are different deny the write.  This would secure the data from bugs in the application and do a double validation that writes are only performed by the owner of the task.
 
 ### deleteTask method
 

@@ -21,6 +21,7 @@ import com.mongodb.app.R
 import com.mongodb.app.data.MockRepository
 import com.mongodb.app.data.SubscriptionType
 import com.mongodb.app.presentation.tasks.SubscriptionTypeViewModel
+import com.mongodb.app.presentation.tasks.TaskViewModel
 import com.mongodb.app.presentation.tasks.ToolbarViewModel
 import com.mongodb.app.ui.theme.MyApplicationTheme
 import com.mongodb.app.ui.theme.Purple200
@@ -28,7 +29,8 @@ import com.mongodb.app.ui.theme.Purple200
 @Composable
 fun ShowMyOwnTasks(
     viewModel: SubscriptionTypeViewModel,
-    toolbarViewModel: ToolbarViewModel
+    toolbarViewModel: ToolbarViewModel,
+    taskViewModel: TaskViewModel
 ) {
     Row(
         modifier = Modifier
@@ -44,14 +46,15 @@ fun ShowMyOwnTasks(
             color = Color.Black
         )
         Spacer(modifier = Modifier.padding(8.dp))
-        OwnerSwitch(viewModel, toolbarViewModel)
+        OwnerSwitch(viewModel, toolbarViewModel, taskViewModel)
     }
 }
 
 @Composable
 fun OwnerSwitch(
     viewModel: SubscriptionTypeViewModel,
-    toolbarViewModel: ToolbarViewModel
+    toolbarViewModel: ToolbarViewModel,
+    taskViewModel: TaskViewModel
 ) {
     Switch(
         checked = when (viewModel.subscriptionType.value) {
@@ -67,6 +70,7 @@ fun OwnerSwitch(
                     SubscriptionType.ALL -> SubscriptionType.MINE
                 }
                 viewModel.updateSubscription(updatedSubscriptionType)
+                taskViewModel.updateQuerySubscriptionModel(updatedSubscriptionType)
             }
         },
         colors = SwitchDefaults.colors(
@@ -84,6 +88,7 @@ fun ShowMyOwnTasksPreview() {
             ShowMyOwnTasks(
                 SubscriptionTypeViewModel(repository),
                 ToolbarViewModel(repository)
+                , TaskViewModel(repository)
             )
         }
     }

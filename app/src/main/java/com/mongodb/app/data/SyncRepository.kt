@@ -226,7 +226,7 @@ class CouchbaseSyncRepository(
      * Returns a flow with the tasks based on the subscription/mode selected
      */
     override fun getTaskList(subscriptionType: SubscriptionType): Flow<List<Item>> {
-        var queryString = "SELECT * FROM data.items as item "
+        var queryString = "SELECT * FROM data.tasks as item "
         if (subscriptionType == SubscriptionType.MINE) {
             val currentUser = app.currentUser?.username
             queryString += "WHERE item.ownerId = '$currentUser' "
