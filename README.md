@@ -377,15 +377,15 @@ Switch(
 )
 ```
 
-## More Information
+More Information
 ----------------
 [Couchbase Lite for Android documentation](https://docs.couchbase.com/couchbase-lite/current/android/quickstart.html)
 [Couchbase Capella App Services documentation](https://docs.couchbase.com/cloud/app-services/index.html)
 
 
 
-**Disclaimer**
-
+Disclaimer
+----------
 The information provided in this documentation is for general informational purposes only and is provided on an “as-is” basis without any warranties, express or implied. This includes, but is not limited to, warranties of accuracy, completeness, merchantability, or fitness for a particular purpose. The use of this information is at your own risk, and the authors, contributors, or affiliated parties assume no responsibility for any errors or omissions in the content.
 
 No technical support, maintenance, or other services are offered in connection with the use of this information. In no event shall the authors, contributors, or affiliated parties be held liable for any damages, losses, or other liabilities arising out of or in connection with the use or inability to use the information provided.
