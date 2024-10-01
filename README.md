@@ -12,7 +12,7 @@ Some minior UI changes were made to remove wording about Realm and replaced with
 
 # Capella Configuration
 
-Before running this application, you must have [Couchbase Capella App Services](https://docs.couchbase.com/cloud/get-started/configuring-app-services.html) set up.  Instructions for setting up Couchbase Capella App Services and updating the configuration file can be found in thee [Capella.md](./Capella.md) file.  Please ensure you complete these steps first, as the application will not function properly without this setup.
+Before running this application, you must have [Couchbase Capella App Services](https://docs.couchbase.com/cloud/get-started/configuring-app-services.html) set up.  Instructions for setting up Couchbase Capella App Services and updating the configuration file can be found in the [Capella.md](./Capella.md) file.  Please ensure you complete these steps first, as the application will not function properly without this setup.
 
 # Android App Conversion 
 
