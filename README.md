@@ -115,15 +115,195 @@ Finally, a DAO(Data Access Object) was created to help with the deserialization 
 
 A heavy amount of the conversion code is was done in the [SyncRepository](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/data/SyncRepository.kt#L26) interface along with the  implementation which was renamed to [CouchbaseSyncRepository](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/data/SyncRepository.kt#L82).  This is the class that does full CRUD to the database and enables syncing to Capella App Services.
 
-### Sync Configuration
+### Implementation of SyncRepository Interface
 
-Most changes for implementing Couchbase Lie where done in the [SyncRepository](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/data/SyncRepository.kt) file.
+Most changes for implementing Couchbase Lite where done in the [SyncRepository](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/data/SyncRepository.kt) file.
 
 A new [CouchbaseSyncRepository](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/data/SyncRepository.kt) class was created that implements the original [SyncRepository](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/data/SyncRepository.kt#L18) interface with as little changes as possible to limit the amount of code that is required to change.
 
-Couchbase Lite doesn't suport the [ResultsChange](https://www.mongodb.com/docs/realm-sdks/kotlin/1.0.1/library-base/-realm%20-kotlin%20-s-d-k/io.realm.kotlin.notifications/-results-change/index.html) interfaces and pattern that Realm provides for tracking changes in a Realm.  Instead Couchbase Lite has a QueryChange via the [LiveQuery](https://docs.couchbase.com/couchbase-lite/current/android/query-live.html#activating-a-live-query).  If any information in the query change, the query is ran again and the results presented.  Couchbase Lite for Android with Kotlin specifically supports the Flow Co-Routine API for handling the [LiveQuery](https://docs.couchbase.com/couchbase-lite/current/android/query-live.html#activating-a-live-query) results which will return a [QueryChange](https://docs.couchbase.com/mobile/3.2.0/couchbase-lite-android/com/couchbase/lite/QueryChange.html) that allows you to manitpluate the results before returning them.
 
-Developers should review the documentation on Ordering of replication events in the [Couchbase Lite SDK documentation](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-repl-ord) prior to making decisions on how to setup the replicator in environments with heavy replication traffic.
+### Initialize Couchbase Lite Database and Replication Configuration
+
+The CouchbaseSyncRepository [init](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/data/SyncRepository.kt#L104) method implements the initalization of the Database and the creation of the data.items collection.  The Couchbase Lite SDK doesn't require the creation of a schema, so the collection is created when the first document is inserted into the collection.  
+
+```kotlin
+ val dbConfig =
+  DatabaseConfigurationFactory.newConfig(app.filesDir)
+app.currentUser?.let { currentUser ->
+  val username = currentUser.username
+   .replace("@", "-")
+   .lowercase(Locale.getDefault())
+  this.database = Database("items${username}", dbConfig)
+  this.collection = this.database.createCollection("items", "data")
+```
+
+Next the [Replication Configuration](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-cfg-repl) is created using the Endpoint URL that is provided from the resource file described earlier in this document.  The configuration is setup in a [PULL_AND_PUSH](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-cfg-sync) configuration which means it will pull changes from the remote database and push changes to Capella App Services. By setting continuous to true the replicator will continue to listen for changes and replicate them.  
+
+```kotlin
+val replicatorConfig = ReplicatorConfigurationFactory.newConfig(
+   target = URLEndpoint(URI(app.endpointUrl)),
+   type = ReplicatorType.PUSH_AND_PULL,
+   continuous = true
+)
+replicatorConfig.collections.add(this.collection)
+```
+
+A change listener for [Replication Status](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-repl-status) is created and is used to track any errors that might happen from replication, which is then logged via the passed in onError closure.
+
+```kotlin
+this.statusChangeToken = this.replicator.addChangeListener { change ->
+  val error: CouchbaseLiteException? = change.status.error
+    error?.let { e ->
+      onError(e)
+    }
+}
+```
+
+> **NOTE**
+>Android Developers should review the documentation on Ordering of replication events in the [Couchbase Lite SDK documentation](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-repl-ord) prior to making decisions on how to setup the replicator in environments with heavy replication traffic.
+>
+### addTask method
+
+The addTask method was  implemented to add a task to the CouchbaseLite Database using JSON serialization.  The method is shown below:
+
+```kotlin
+app.currentUser?.let { user ->
+  val task = Item(
+    ownerId = user.username,
+    summary = taskSummary
+  )
+  withContext(Dispatchers.IO){
+    try {
+      val json = task.toJson()
+      val mutableDoc = MutableDocument(task.id, json)
+      collection.save(mutableDoc)
+    } catch(e:Exception) {
+      onError(e)
+    }
+  }
+}
+```
+
+Note that the database operations are run on Dispatchers.IO to keep from running on the main thread.  The task is converted to a JSON string using the Kotlin serialization library and then saved to the collection using the [MutableDocument](https://docs.couchbase.com/couchbase-lite/current/android/document.html#constructing-a-document) object.  If an error occurs, the onError closure is called with the exception that was thrown.  
+
+### close method
+
+The close method is used to remove the Replication Status change listener, stop replication, and then close the database.  This would be called when the user logs out from the application.
+
+```kotlin
+override fun close(){
+  this.statusChangeToken.close()
+  this.replicator.stop()
+  this.database.close()
+}
+```
+
+### deleteTask method
+
+The deleteTask method removes a task from the database.  This is done by retrieving the document from the database using the collection.getDocument method and then calling the collection delete method.
+
+```kotlin
+override suspend fun deleteTask(task: Item) {
+  withContext(Dispatchers.IO) {
+   try {
+     val doc = collection.getDocument(task.id)
+     doc?.let {
+      collection.delete(it)
+     }
+   } catch (e: Exception) {
+     onError(e)
+   }
+  }
+}
+```
+
+
+### getTaskList method
+
+Couchbase Lite doesn't suport the [ResultsChange](https://www.mongodb.com/docs/realm-sdks/kotlin/1.0.1/library-base/-realm%20-kotlin%20-s-d-k/io.realm.kotlin.notifications/-results-change/index.html) interfaces and pattern that Realm provides for tracking changes in a Realm.  Instead Couchbase Lite has a QueryChange via the [LiveQuery](https://docs.couchbase.com/couchbase-lite/current/android/query-live.html#activating-a-live-query).  
+
+If any information in the query change, the query is ran again and the results presented.  Couchbase Lite for Android with Kotlin specifically supports the Flow Co-Routine API for handling the [LiveQuery](https://docs.couchbase.com/couchbase-lite/current/android/query-live.html#activating-a-live-query) results which will return a [QueryChange](https://docs.couchbase.com/mobile/3.2.0/couchbase-lite-android/com/couchbase/lite/QueryChange.html) that allows you to manitpluate the results before returning them.
+
+Couchbase Lite has a different way of handing replication and security than the Atlas Device SDK [Subscription](https://www.mongodb.com/docs/atlas/device-sdks/sdk/kotlin/sync/subscribe/#subscriptions-overview) API.  Because of this, some of the code has been simplifed to handle when filtering out the current user tasks vs all tasks in the collection.  
+
+For a real world mobile app, you would want to look at Couchbase Capella App Services [channels](https://docs.couchbase.com/cloud/app-services/channels/channels.html) and [roles](https://docs.couchbase.com/cloud/app-services/user-management/create-app-role.html). The Replication Configuration also supports [filtering of channels](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-repl-chan) to limit the data that is replicated to the device. 
+
+The getTaskList method was implemented using a LiveQuery as shown below:
+
+```kotlin
+override fun getTaskList(subscriptionType: SubscriptionType): Flow<List<Item>> {
+  var queryString = "SELECT * FROM data.items as item "
+  if (subscriptionType == SubscriptionType.MINE) {
+    val currentUser = app.currentUser?.username
+    queryString += "WHERE item.ownerId = '$currentUser' "
+  }
+  queryString += "ORDER BY META().id ASC"
+  val query = this.database.createQuery(queryString)
+  val flow = query
+    .queryChangeFlow()
+    .map { qc -> mapQueryChangeToItem(qc) }
+    .flowOn(Dispatchers.IO)
+  query.execute()
+  return flow
+}
+```
+
+This code creates a dynamic SQL++ query based on the subscription mode that is provided.  If the mode is set to filter documents by the current user, then that selects all items based on the ownerId field in the document.  If it's set to All then it pulls all the documents from the data.items collection and orders them by the document id.  The query is then executed and the results are returned as a Flow of List<Item> objects.  
+
+The mapQueryChangeToItem method is used to convert the QueryChange object to a List<Item> object by using the Kotlin serialization library to deserialize the JSON string that is returned from the query.  The method is shown below:
+
+```kotlin
+   private fun mapQueryChangeToItem(queryChange: QueryChange): List<Item> {
+        val items = mutableListOf<Item>()
+        queryChange.results?.let { results ->
+            results.forEach { result ->
+                val item = Json.decodeFromString<ItemDao>(result.toJSON()).item
+                items.add(item)
+            }
+        }
+        return items
+    }
+```
+
+If a developer wanted to emulate the ResultsChange API from Realm, they could use Live Query along with a private local list of the previous query results and then calculate the changes (additions, deletions, and updates) between the two lists.  This would require more code and would be more complex than the current implementation.
+
+### toggleIsComplete method
+
+The toggleIsComplete method is used to update a task.  This is done by retrieving the document from the database using the collection.getDocument method and then updating the document with the new value for the isComplete property.
+
+```kotlin
+override suspend fun toggleIsComplete(task: Item) {
+ withContext(Dispatchers.IO) {
+  try {
+   val doc = collection.getDocument(task.id)
+   doc?.let {
+    val isComplete = doc.getBoolean("isComplete")
+    val mutableDoc = doc.toMutable()
+    mutableDoc.setBoolean("isComplete", !isComplete )
+    collection.save(mutableDoc)
+   }
+  } catch (e: Exception) {
+    onError(e)
+  }
+ }
+}
+```
+
+### TaskViewModel changes
+
+The TaskViewModel init method was updated to use the new LiveQuery data. 
+
+```kotlin
+init {
+ viewModelScope.launch {
+  repository.getTaskList(SubscriptionType.MINE)
+  .collect { event: List<Item> ->
+    taskListState.clear()
+    taskListState.addAll(event)
+  }
+ }
+}
+```
 
 
 

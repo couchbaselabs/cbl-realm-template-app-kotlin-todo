@@ -57,8 +57,7 @@ interface SyncRepository {
     /**
      * Returns a flow with the tasks for the current logged in user
      */
-    fun getTaskList(): Flow<List<Item>>
-
+    fun getTaskList(subscriptionType: SubscriptionType): Flow<List<Item>>
 
     /**
      * Whether the given [task] belongs to the current user logged in to the app.
@@ -99,7 +98,7 @@ class CouchbaseSyncRepository(
     private lateinit var database: Database
     private lateinit var replicator: Replicator
     private lateinit var statusChangeToken: ListenerToken
-    private var _syncedItems = mapOf<String, Item>()
+    private var _currentSubscriptionType = SubscriptionType.MINE
 
     init {
         //set Couchbase Lite logging levels
@@ -141,6 +140,9 @@ class CouchbaseSyncRepository(
         }
     }
 
+    /**
+     * Adds a task that belongs to the current user using the specified [taskSummary].
+     */
     override suspend fun addTask(taskSummary: String) {
         if (app.currentUser == null) {
             throw IllegalStateException("User must be logged in to add a task")
@@ -162,12 +164,18 @@ class CouchbaseSyncRepository(
         }
     }
 
+    /**
+     * Closes the replicator and database
+     */
     override fun close(){
         this.statusChangeToken.close()
         this.replicator.stop()
         this.database.close()
     }
 
+    /**
+     * Deletes a given task.
+     */
     override suspend fun deleteTask(task: Item) {
         withContext(Dispatchers.IO) {
             try {
@@ -181,12 +189,24 @@ class CouchbaseSyncRepository(
         }
     }
 
+    /**
+     * Returns the active [SubscriptionType].
+     */
     override fun getActiveSubscriptionType(): SubscriptionType {
-        TODO("Not yet implemented")
+        return _currentSubscriptionType
     }
 
-    override fun getTaskList(): Flow<List<Item>> {
-        val query = this.database.createQuery("SELECT * FROM data.items as item ORDER BY META().id ASC")
+    /**
+     * Returns a flow with the tasks based on the subscription/mode selected
+     */
+    override fun getTaskList(subscriptionType: SubscriptionType): Flow<List<Item>> {
+        var queryString = "SELECT * FROM data.items as item "
+        if (subscriptionType == SubscriptionType.MINE) {
+            val currentUser = app.currentUser?.username
+            queryString += "WHERE item.ownerId = '$currentUser' "
+        }
+        queryString += "ORDER BY META().id ASC"
+        val query = this.database.createQuery(queryString)
         val flow = query
             .queryChangeFlow()
             .map { qc -> mapQueryChangeToItem(qc) }
@@ -195,6 +215,9 @@ class CouchbaseSyncRepository(
         return flow
     }
 
+    /**
+     * Whether the given [task] belongs to the current user logged in to the app.
+     */
     override fun isTaskMine(task: Item): Boolean = task.ownerId == app.currentUser?.username
 
     private fun mapQueryChangeToItem(queryChange: QueryChange): List<Item> {
@@ -208,6 +231,9 @@ class CouchbaseSyncRepository(
         return items
     }
 
+    /**
+     * Update the `isComplete` flag for a specific [Item].
+     */
     override suspend fun toggleIsComplete(task: Item) {
         withContext(Dispatchers.IO) {
             try {
@@ -224,14 +250,23 @@ class CouchbaseSyncRepository(
         }
     }
 
+    /**
+     * Updates the subscription that is used in Query based on the specified [SubscriptionType].
+     */
     override suspend fun updateSubscriptions(subscriptionType: SubscriptionType) {
-        TODO("Not yet implemented")
+        _currentSubscriptionType = subscriptionType
     }
 
+    /**
+     * Pauses synchronization with Capella App Services. This is used to emulate a scenario of no connectivity.
+     */
     override fun pauseSync() {
         this.replicator.stop()
     }
 
+   /**
+    * Resumes synchronization with Capella App Services
+    */
     override fun resumeSync() {
         this.replicator.start()
     }
@@ -241,7 +276,7 @@ class CouchbaseSyncRepository(
  * Mock repo for generating the Compose layout preview.
  */
  class MockRepository : SyncRepository {
-    override fun getTaskList(): Flow<List<Item>> = flowOf()
+    override fun getTaskList(subscriptionType: SubscriptionType): Flow<List<Item>> = flowOf()
     override suspend fun toggleIsComplete(task: Item) = Unit
     override suspend fun updateSubscriptions(subscriptionType: SubscriptionType) {
         TODO("Not yet implemented")
