@@ -1,8 +1,8 @@
 ﻿# Conversion Example of MongoDb Atlas Device Sync to Couchbase Lite for Android Developers 
 
-The original version of this application was built with the [MongoDb Atlas Device SDK](https://www.mongodb.com/docs/atlas/device-sdks/sdk/kotlin/) and [Atlas Device Sync](https://www.mongodb.com/docs/atlas/app-services/sync/).  
+The original version of this [application](https://github.com/mongodb/template-app-kotlin-todo)  was built with the [MongoDb Atlas Device SDK](https://www.mongodb.com/docs/atlas/device-sdks/sdk/kotlin/) and [Atlas Device Sync](https://www.mongodb.com/docs/atlas/app-services/sync/).  
 
-This repository provides a converted version of the application using Couchbase Mobile ([Couchbase Lite for Android SDK](https://docs.couchbase.com/couchbase-lite/current/android/gs-prereqs.html) along with [Capella App Services](https://docs.couchbase.com/cloud/app-services/index.html)).  The original Atlas Device SDK repository can be found [here](https://github.com/mongodb/template-app-kotlin-todo). 
+This repository provides a converted version of the application using Couchbase Mobile ([Couchbase Lite for Android SDK](https://docs.couchbase.com/couchbase-lite/current/android/gs-prereqs.html) along with [Capella App Services](https://docs.couchbase.com/cloud/app-services/index.html)).  
 
 > **NOTE**
 >The original application is a basic To Do list.  The original source code has it's own opinionated way of implementing an Android application and communicating between different layers.  This conversion is by no means a best practice for Android development or a show case on how to properly communicate between layers of an application.  It's more of an example of the process that a developer will have to go through to convert an application from one SDK to another.
