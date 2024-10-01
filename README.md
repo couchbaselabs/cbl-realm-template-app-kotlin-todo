@@ -204,7 +204,7 @@ Couchbase Lite doesn't have the same security model as meantioned earlier to the
 
 2. You could allow the write to the database even though the user doesn't have access and then let the replicator sync the changes.  In the App Services [Access Control and Data Validation](https://docs.couchbase.com/cloud/app-services/deployment/access-control-data-validation.html) [sync function](https://docs.couchbase.com/cloud/app-services/deployment/access-control-data-validation.html) you could check the security there and then deny the write.  You can use a Custom [Replication Conflict Resolution](https://docs.couchbase.com/couchbase-lite/current/android/conflict.html#custom-conflict-resolution) to receive this in your applications code and then revert the change.
 
-Both options are viable but with option 2 if your app is offline for long periods of time, this might not fit your security requirements.
+Both options are viable but with option 2 if your app is offline for long periods of time, this might not fit your security requirements.  Because this app offers an offline mode, option 1 was selected for the security model in the conversion. 
 
 ### deleteTask method
 
