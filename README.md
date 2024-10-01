@@ -379,8 +379,8 @@ Switch(
 
 More Information
 ----------------
-[Couchbase Lite for Android documentation](https://docs.couchbase.com/couchbase-lite/current/android/quickstart.html)
-[Couchbase Capella App Services documentation](https://docs.couchbase.com/cloud/app-services/index.html)
+- [Couchbase Lite for Android documentation](https://docs.couchbase.com/couchbase-lite/current/android/quickstart.html)
+- [Couchbase Capella App Services documentation](https://docs.couchbase.com/cloud/app-services/index.html)
 
 
 
