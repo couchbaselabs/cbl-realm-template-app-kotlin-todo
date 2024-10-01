@@ -1,15 +1,29 @@
 package com.mongodb.app
 
+import com.couchbase.lite.Database
+import com.couchbase.lite.Collection
+import com.couchbase.lite.DatabaseConfigurationFactory
+import com.couchbase.lite.LogDomain
+import com.couchbase.lite.LogLevel
+import com.couchbase.lite.Replicator
+import com.couchbase.lite.ReplicatorConfigurationFactory
+import com.couchbase.lite.ReplicatorType
+import com.couchbase.lite.URLEndpoint
+import com.couchbase.lite.newConfig
+
 import com.mongodb.app.data.ConnectionException
 import com.mongodb.app.data.InvalidCredentialsException
 import com.mongodb.app.domain.User
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
+import java.net.URI
 import java.net.URL
 import java.util.Base64
+import java.util.Locale
 
-class CBLiteApp(val endpointUrl: String){
+class CBLiteApp(val endpointUrl: String, val filesDir: String){
+
     var currentUser: User? = null
 
     suspend fun login(username: String, password: String) {

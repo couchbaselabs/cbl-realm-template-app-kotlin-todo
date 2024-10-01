@@ -1,9 +1,16 @@
 package com.mongodb.app.domain
 
+import androidx.annotation.Keep
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import kotlinx.serialization.json.Json
 import java.util.UUID
 
+@Keep
+@Serializable
+data class ItemDao(var item: Item)
+
+@Keep
 @Serializable
 data class Item(
     @Transient var id: String = UUID.randomUUID().toString(),
@@ -11,21 +18,7 @@ data class Item(
     var summary: String = "",
     var ownerId: String = "") {
 
-    override fun equals(other: Any?): Boolean {
-        if (other == null) return false
-        if (other !is Item) return false
-        if (this.id != other.id) return false
-        if (this.isComplete != other.isComplete) return false
-        if (this.summary != other.summary) return false
-        if (this.ownerId != other.ownerId) return false
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = id.hashCode()
-        result = 31 * result + isComplete.hashCode()
-        result = 31 * result + summary.hashCode()
-        result = 31 * result + ownerId.hashCode()
-        return result
+    fun toJson(): String {
+        return Json.encodeToString(serializer(), this)
     }
 }

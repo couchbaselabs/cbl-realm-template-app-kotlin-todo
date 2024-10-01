@@ -1,6 +1,5 @@
 package com.mongodb.app.ui.tasks
 
-import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -43,16 +42,10 @@ fun AddItemPrompt(viewModel: AddItemViewModel) {
             }
         },
         confirmButton = {
-            // If you're getting this app code by cloning the repository at
-            // https://github.com/mongodb/template-app-kotlin-todo, 
-            // it does not contain the data explorer link. Download the
-            // app template from the Atlas UI to view a link to your data.
-            var link = stringResource(R.string.realm_data_explorer_link)
             Button(
                 colors = buttonColors(containerColor = Purple200),
                 onClick = {
                     viewModel.addTask()
-                    Log.v("TemplateApp","To see your data in Atlas, follow this link:"  + link)
                 }
             ) {
                 Text(stringResource(R.string.create))

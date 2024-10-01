@@ -21,7 +21,7 @@ class TemplateApp: Application() {
         //https://docs.couchbase.com/couchbase-lite/current/android/gs-build.html#sample-code-in-detail
         CouchbaseLite.init(this)
 
-        app = CBLiteApp(getString(R.string.capella_app_endpoint_url))
+        app = CBLiteApp(getString(R.string.capella_app_endpoint_url), this.filesDir.toString())
         Log.v(TAG(), "Initialized the App with Endpoint URL: ${app.endpointUrl}")
     }
 }

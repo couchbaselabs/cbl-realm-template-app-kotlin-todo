@@ -13,9 +13,6 @@ class DatabaseManager(private val context: Context) {
     var itemsDatabase: Database? = null
     var loggedInUser: User? = null
     init {
-        //setup couchbase lite
-
-
         //turn on uber logging - in production apps this shouldn't be turn on
         Database.log.console.domains = LogDomain.ALL_DOMAINS
         Database.log.console.level = LogLevel.VERBOSE

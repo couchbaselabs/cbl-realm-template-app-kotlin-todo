@@ -10,9 +10,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.savedstate.SavedStateRegistryOwner
 import com.mongodb.app.data.SyncRepository
 import com.mongodb.app.domain.Item
-import io.realm.kotlin.notifications.InitialResults
-import io.realm.kotlin.notifications.ResultsChange
-import io.realm.kotlin.notifications.UpdatedResults
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -33,7 +30,7 @@ class TaskViewModel constructor(
     init {
         viewModelScope.launch {
             repository.getTaskList()
-                .collect { event: ResultsChange<Item> ->
+                .collect { event: List<Item> ->
                     when (event) {
                         is InitialResults -> {
                             taskListState.clear()
