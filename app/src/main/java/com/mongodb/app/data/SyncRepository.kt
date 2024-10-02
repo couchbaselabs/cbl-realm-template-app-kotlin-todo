@@ -6,6 +6,7 @@ import com.couchbase.lite.Collection
 import com.couchbase.lite.CollectionConfiguration
 import com.couchbase.lite.CouchbaseLiteException
 import com.couchbase.lite.DatabaseConfigurationFactory
+import com.couchbase.lite.IndexBuilder
 import com.couchbase.lite.ListenerToken
 import com.couchbase.lite.LogDomain
 import com.couchbase.lite.LogLevel
@@ -15,6 +16,7 @@ import com.couchbase.lite.Replicator
 import com.couchbase.lite.ReplicatorConfigurationFactory
 import com.couchbase.lite.ReplicatorType
 import com.couchbase.lite.URLEndpoint
+import com.couchbase.lite.ValueIndexItem
 import com.couchbase.lite.newConfig
 import com.couchbase.lite.queryChangeFlow
 import com.mongodb.app.app
@@ -127,6 +129,14 @@ class CouchbaseSyncRepository(
                 } else {
                     this.collection = checkCollection
                 }
+
+                //create index - check to see if it's created, if not create it
+                val indexOwnerId = this.collection.getIndex("idxTasksOwnerId")
+                if (indexOwnerId == null) {
+                    val idxOwnerId = IndexBuilder.valueIndex(ValueIndexItem.property("ownerId"))
+                    this.collection.createIndex("idxTasksOwnerId", idxOwnerId)
+                }
+
                 val replicatorConfig = ReplicatorConfigurationFactory
                     .newConfig(
                         target = URLEndpoint(URI(app.endpointUrl)),
@@ -139,7 +149,8 @@ class CouchbaseSyncRepository(
                 replicatorConfig.addCollection(collection, collectionConfig)
 
                 //add authentication
-                val auth = BasicAuthenticator(currentUser.username, currentUser.password.toCharArray())
+                val auth =
+                    BasicAuthenticator(currentUser.username, currentUser.password.toCharArray())
                 replicatorConfig.authenticator = auth
 
                 //create replicator
@@ -171,12 +182,12 @@ class CouchbaseSyncRepository(
                 ownerId = user.username,
                 summary = taskSummary
             )
-            withContext(Dispatchers.IO){
+            withContext(Dispatchers.IO) {
                 try {
                     val json = task.toJson()
                     val mutableDoc = MutableDocument(task.id, json)
                     collection.save(mutableDoc)
-                }catch(e:Exception) {
+                } catch (e: Exception) {
                     onError(e)
                 }
             }
@@ -186,7 +197,7 @@ class CouchbaseSyncRepository(
     /**
      * Closes the replicator and database
      */
-    override fun close(){
+    override fun close() {
         this.statusChangeToken.close()
         this.replicator.stop()
         this.database.close()
@@ -202,8 +213,7 @@ class CouchbaseSyncRepository(
                 doc?.let {
                     //handle security of the owner only being able to delete their own tasks
                     val ownerId = doc.getString("ownerId")
-                    if (ownerId != task.ownerId)
-                    {
+                    if (ownerId != task.ownerId) {
                         onError(IllegalStateException("User does not have permission to delete this task"))
                     } else {
                         collection.delete(it)
@@ -267,8 +277,7 @@ class CouchbaseSyncRepository(
                 doc?.let {
                     //handle security of the owner only being able to update their own tasks
                     val ownerId = doc.getString("ownerId")
-                    if (ownerId != task.ownerId)
-                    {
+                    if (ownerId != task.ownerId) {
                         onError(IllegalStateException("User does not have permission to update this task"))
                     } else {
                         val isComplete = doc.getBoolean("isComplete")
@@ -297,9 +306,9 @@ class CouchbaseSyncRepository(
         this.replicator.stop()
     }
 
-   /**
-    * Resumes synchronization with Capella App Services
-    */
+    /**
+     * Resumes synchronization with Capella App Services
+     */
     override fun resumeSync() {
         this.replicator.start()
     }
@@ -308,7 +317,7 @@ class CouchbaseSyncRepository(
 /**
  * Mock repo for generating the Compose layout preview.
  */
- class MockRepository : SyncRepository {
+class MockRepository : SyncRepository {
     override fun getTaskList(subscriptionType: SubscriptionType): Flow<List<Item>> = flowOf()
     override suspend fun toggleIsComplete(task: Item) = Unit
     override suspend fun updateSubscriptions(subscriptionType: SubscriptionType) {

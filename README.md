@@ -135,7 +135,18 @@ app.currentUser?.let { currentUser ->
   this.collection = this.database.createCollection("items", "data")
 ```
 
-Next the [Replication Configuration](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-cfg-repl) is created using the Endpoint URL that is provided from the resource file described earlier in this document.  The configuration is setup in a [PULL_AND_PUSH](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-cfg-sync) configuration which means it will pull changes from the remote database and push changes to Capella App Services. By setting "continuous" to "true", the replicator will continue to listen for changes and replicate them.  
+An index is created to help speed up the query where tasks are filtered out by the ownerId field.  This is done by calling the createIndex method on the collection object.
+
+```kotlin
+ //create index - check to see if it's created, if not create it
+val indexOwnerId = this.collection.getIndex("idxTasksOwnerId")
+if (indexOwnerId == null) {
+  val idxOwnerId = IndexBuilder.valueIndex(ValueIndexItem.property("ownerId"))
+  this.collection.createIndex("idxTasksOwnerId", idxOwnerId)
+}
+```
+
+Next the [Replication Configuration](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-cfg-repl) is created using the Endpoint URL that is provided from the resource file described earlier in this document.  The configuration is setup in a [PULL_AND_PUSH](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-cfg-sync) configuration which means it will pull changes from the remote database and push changes to Capella App Services. By setting continuous to true the replicator will continue to listen for changes and replicate them.  
 
 ```kotlin
 val replicatorConfig = ReplicatorConfigurationFactory.newConfig(
