@@ -1,8 +1,13 @@
 package com.mongodb.app.data
 
-interface ResultsChange<T> {
-    val list: List<T>
+interface ResultsChange<T>
+
+class InitialResults<T> : ResultsChange<T> {
+    val list: MutableList<T> = mutableListOf()
 }
 
-interface InitialResults<T> : ResultsChange<T> { }
-interface UpdatedResults<T> : ResultsChange<T> { }
+class UpdatedResults<T> : ResultsChange<T> {
+    val insertions: MutableList<T> = mutableListOf()
+    val deletions: MutableList<T> = mutableListOf()
+    val changes: MutableList<T> = mutableListOf()
+}

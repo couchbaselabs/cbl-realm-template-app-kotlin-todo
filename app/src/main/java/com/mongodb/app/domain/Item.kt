@@ -18,6 +18,24 @@ data class Item(
     var summary: String = "",
     var ownerId: String = "") {
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Item) return false
+
+        return id == other.id &&
+                isComplete == other.isComplete &&
+                summary == other.summary &&
+                ownerId == other.ownerId
+    }
+
+    override fun hashCode(): Int {
+        var result = id.hashCode()
+        result = 31 * result + isComplete.hashCode()
+        result = 31 * result + summary.hashCode()
+        result = 31 * result + ownerId.hashCode()
+        return result
+    }
+
     fun toJson(): String {
         return Json.encodeToString(serializer(), this)
     }

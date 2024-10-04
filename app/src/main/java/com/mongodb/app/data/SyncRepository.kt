@@ -11,6 +11,7 @@ import com.couchbase.lite.ListenerToken
 import com.couchbase.lite.LogDomain
 import com.couchbase.lite.LogLevel
 import com.couchbase.lite.MutableDocument
+import com.couchbase.lite.Query
 import com.couchbase.lite.QueryChange
 import com.couchbase.lite.Replicator
 import com.couchbase.lite.ReplicatorConfigurationFactory
@@ -61,7 +62,7 @@ interface SyncRepository {
     /**
      * Returns a flow with the tasks for the current logged in user
      */
-    fun getTaskList(subscriptionType: SubscriptionType): Flow<List<Item>>
+    fun getTaskList(subscriptionType: SubscriptionType): Flow<ResultsChange<Item>>
 
     /**
      * Whether the given [task] belongs to the current user logged in to the app.
@@ -102,6 +103,9 @@ class CouchbaseSyncRepository(
     private lateinit var database: Database
     private lateinit var replicator: Replicator
     private lateinit var statusChangeToken: ListenerToken
+    private lateinit var queryMyTasks: Query
+    private lateinit var queryAllTasks: Query
+    private var _previousItemsMap: MutableMap<String, Item> = mutableMapOf()
     private var _currentSubscriptionType = SubscriptionType.MINE
 
     init {
@@ -164,6 +168,14 @@ class CouchbaseSyncRepository(
                     }
                 }
                 this.replicator.start()
+
+                //create cached queries
+                var queryString = "SELECT * FROM data.tasks as item "
+                this.queryAllTasks = this.database.createQuery(queryString)
+
+                queryString += "WHERE item.ownerId = '${currentUser.username}' "
+                queryString += "ORDER BY META().id ASC"
+                this.queryMyTasks = this.database.createQuery(queryString)
             }
         } catch (e: Exception) {
             onError(e)
@@ -235,14 +247,12 @@ class CouchbaseSyncRepository(
     /**
      * Returns a flow with the tasks based on the subscription/mode selected
      */
-    override fun getTaskList(subscriptionType: SubscriptionType): Flow<List<Item>> {
-        var queryString = "SELECT * FROM data.tasks as item "
-        if (subscriptionType == SubscriptionType.MINE) {
-            val currentUser = app.currentUser?.username
-            queryString += "WHERE item.ownerId = '$currentUser' "
+    override fun getTaskList(subscriptionType: SubscriptionType): Flow<ResultsChange<Item>> {
+        this._previousItemsMap = mutableMapOf()
+        val query = when (subscriptionType) {
+            SubscriptionType.MINE -> queryMyTasks
+            SubscriptionType.ALL -> queryAllTasks
         }
-        queryString += "ORDER BY META().id ASC"
-        val query = this.database.createQuery(queryString)
         val flow = query
             .queryChangeFlow()
             .map { qc -> mapQueryChangeToItem(qc) }
@@ -256,15 +266,49 @@ class CouchbaseSyncRepository(
      */
     override fun isTaskMine(task: Item): Boolean = task.ownerId == app.currentUser?.username
 
-    private fun mapQueryChangeToItem(queryChange: QueryChange): List<Item> {
-        val items = mutableListOf<Item>()
+    /**
+     * Map the query change to a list of items
+     */
+    private fun mapQueryChangeToItem(queryChange: QueryChange): ResultsChange<Item> {
+        val isInitial = _previousItemsMap.isEmpty()
+        val initialResults = InitialResults<Item>()
+        val updatedResults = UpdatedResults<Item>()
+
+        // used to track the current items which will
+        // become the next previousItemMap after this is complete
+        val currentItemsMap = mutableMapOf<String, Item>()
+
+        // used to trim out items
+        // anything left over is a deletion
+        val previousItemsSet = _previousItemsMap.keys.toMutableSet()
+        //loop through the query change results
         queryChange.results?.let { results ->
             results.forEach { result ->
                 val item = Json.decodeFromString<ItemDao>(result.toJSON()).item
-                items.add(item)
+                currentItemsMap[item.id] = item
+                if (isInitial) {
+                    initialResults.list.add(item)
+                } else {
+                    val previousItem = _previousItemsMap[item.id]
+                    when {
+                        previousItem == null -> updatedResults.insertions.add(item)
+                        item != previousItem -> updatedResults.changes.add(item)
+                    }
+
+                    previousItemsSet.remove(item.id)
+                }
             }
         }
-        return items
+        if (!isInitial) {
+            // Determine deletions
+            previousItemsSet.forEach { id ->
+                _previousItemsMap[id]?.let { updatedResults.deletions.add(it) }
+            }
+        }
+        _previousItemsMap.clear()  // Clear previous map
+        _previousItemsMap.putAll(currentItemsMap)  // Update _previousItemsMap with current items
+
+        return if (isInitial) initialResults else updatedResults
     }
 
     /**
@@ -312,13 +356,16 @@ class CouchbaseSyncRepository(
     override fun resumeSync() {
         this.replicator.start()
     }
+
 }
 
 /**
  * Mock repo for generating the Compose layout preview.
  */
 class MockRepository : SyncRepository {
-    override fun getTaskList(subscriptionType: SubscriptionType): Flow<List<Item>> = flowOf()
+    override fun getTaskList(subscriptionType: SubscriptionType): Flow<ResultsChange<Item>> =
+        flowOf()
+
     override suspend fun toggleIsComplete(task: Item) = Unit
     override suspend fun updateSubscriptions(subscriptionType: SubscriptionType) {
         TODO("Not yet implemented")

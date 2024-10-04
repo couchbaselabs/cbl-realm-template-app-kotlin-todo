@@ -8,11 +8,15 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.savedstate.SavedStateRegistryOwner
+import com.mongodb.app.data.InitialResults
+import com.mongodb.app.data.ResultsChange
 import com.mongodb.app.data.SubscriptionType
 import com.mongodb.app.data.SyncRepository
+import com.mongodb.app.data.UpdatedResults
 import com.mongodb.app.domain.Item
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
@@ -27,25 +31,54 @@ class TaskViewModel constructor(
     private val _event: MutableSharedFlow<TaskViewEvent> = MutableSharedFlow()
     val event: Flow<TaskViewEvent>
         get() = _event
+    private var subscriptionJob: Job? = null
 
     init {
         viewModelScope.launch {
-            repository.getTaskList(SubscriptionType.MINE)
-                .collect { event: List<Item> ->
-                    taskListState.clear()
-                    taskListState.addAll(event)
-                }
+            subscriptionJob = viewModelScope.launch {
+                getTaskList(SubscriptionType.MINE)
+            }
         }
     }
 
     fun updateQuerySubscriptionModel(updatedSubscriptionType: SubscriptionType) {
-        viewModelScope.launch {
-            repository.getTaskList(updatedSubscriptionType)
-                .collect { event: List<Item> ->
-                    taskListState.clear()
-                    taskListState.addAll(event)
-                }
+        subscriptionJob?.cancel()  // Cancel the previous job
+        subscriptionJob = viewModelScope.launch {
+            getTaskList(updatedSubscriptionType)
         }
+    }
+
+    private suspend fun getTaskList(subscriptionType: SubscriptionType) {
+        repository.getTaskList(subscriptionType)
+            .collect { event: ResultsChange<Item> ->
+                when (event) {
+                    is InitialResults -> {
+                        taskListState.clear()
+                        taskListState.addAll(event.list)
+                    }
+                    is UpdatedResults -> {
+                        if (event.deletions.isNotEmpty() && taskListState.isNotEmpty()) {
+                            event.deletions.reversed().forEach {
+                                val currentItem = taskListState.find { task -> task.id == it.id }
+                                taskListState.remove(currentItem)
+                            }
+                        }
+                        if (event.insertions.isNotEmpty()) {
+                            event.insertions.forEach {
+                                taskListState.add(it)
+                            }
+                        }
+                        if (event.changes.isNotEmpty()) {
+                            event.changes.forEach {
+                                val currentItem = taskListState.find { task -> task.id == it.id }
+                                taskListState.remove(currentItem)
+                                taskListState.add(it)
+                            }
+                        }
+                    }
+                    else -> Unit // No-op
+                }
+            }
     }
 
     fun toggleIsComplete(task: Item) {

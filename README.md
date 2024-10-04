@@ -157,6 +157,15 @@ val replicatorConfig = ReplicatorConfigurationFactory.newConfig(
 replicatorConfig.collections.add(this.collection)
 ```
 
+Authentication is added to only sync information based on the current authenticated user.
+
+```kotlin
+val auth =
+  BasicAuthenticator(currentUser.username, currentUser.password.toCharArray())
+replicatorConfig.authenticator = auth
+```
+
+
 A change listener for [Replication Status](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-repl-status) is created and is used to track any errors that might happen from replication, which is then logged via the passed in onError closure.
 
 ```kotlin
@@ -172,6 +181,16 @@ this.statusChangeToken = this.replicator.addChangeListener { change ->
 >Android Developers should review the documentation on Ordering of replication events in the [Couchbase Lite SDK documentation for Kotlin](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-repl-ord) prior to making decisions on how to setup the replicator in environments with heavy replication traffic.
 >
 
+Finally we setup our two basic queries for the application.  One to get the current users tasks and one to get all tasks. Queries are compiled when created from the `database.createQuery` method.  By initializing the query when the repository is intialized, we can use the query later in the application without having to recompile the query each time the getTasksList method is run. 
+
+```kotlin
+var queryString = "SELECT * FROM data.tasks as item "
+this.queryAllTasks = this.database.createQuery(queryString)
+
+queryString += "WHERE item.ownerId = '${currentUser.username}' "
+queryString += "ORDER BY META().id ASC"
+this.queryMyTasks = this.database.createQuery(queryString)
+```
 ### addTask method
 
 The addTask method was  implemented to add a task to the CouchbaseLite Database using JSON serialization.  The method is shown below:
@@ -260,6 +279,26 @@ Couchbase Lite has a different way of handing replication and security than the 
 >For a production mobile app, make sure you read the Couchbase Capella App Services [channels](https://docs.couchbase.com/cloud/app-services/channels/channels.html) and [roles](https://docs.couchbase.com/cloud/app-services/user-management/create-app-role.html) documentation to understand the security model it provides. 
 >
 >The Couchbase Lite SDK [Replication Configuration](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-cfg-repl) API also supports [filtering of channels](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-repl-chan) to limit the data that is replicated to the device. 
+
+For the conversion of this app, the decision was made to emulate the Realm SDK ResultsChange API.  A new interface and class implementations where added to the ResultsChange.kt file.
+
+```kotlin
+interface ResultsChange<T>
+
+class InitialResults<T> : ResultsChange<T> {
+    val list: MutableList<T> = mutableListOf()
+}
+
+class UpdatedResults<T> : ResultsChange<T> {
+    val insertions: MutableList<T> = mutableListOf()
+    val deletions: MutableList<T> = mutableListOf()
+    val changes: MutableList<T> = mutableListOf()
+}
+```
+
+> **NOTE**
+> This represents a partial implementation of the ResultsChange API. It is designed to maintain the application’s operational integrity without necessitating substantial code rewrites or altering the user experience associated with rendering items in the list during addition or deletion processes.
+>
 
 The getTaskList method was implemented using a LiveQuery as shown below:
 
