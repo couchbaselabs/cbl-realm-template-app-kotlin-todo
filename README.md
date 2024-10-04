@@ -305,6 +305,12 @@ class UpdatedResults<T> : ResultsChange<T> {
 > This represents a partial implementation of the ResultsChange API. It is designed to maintain the application’s operational integrity without necessitating substantial code rewrites or altering the user experience associated with rendering items in the list during addition or deletion processes.
 >
 
+A [_previousItemsMap](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/data/SyncRepository.kt#L108) property is defined in the CouchbaseSyncRepository is used to track the previous items that were returned from the getTaskList call so that the changes can be calculated.
+
+```kotlin
+private var _previousItemsMap: MutableMap<String, Item> = mutableMapOf()
+```
+
 The getTaskList method was implemented using a LiveQuery as shown below:
 
 ```kotlin
@@ -323,11 +329,11 @@ override fun getTaskList(subscriptionType: SubscriptionType): Flow<ResultsChange
 }
 ```
 
-This code runs a live query based on the SubscriptionType passed into the method, which emulates changing of subscriptions in Realm. If the subscription mode is configured to filter documents by the current user, the query targets documents where the ownerId field matches the user’s ID. In the case of the “All” mode, it retrieves all documents from the data.items collection, sorted by their document IDs. The query is then executed, returning the results as a Flow of ResultsChange<Item> objects.
+This code runs a live query based on the SubscriptionType passed into the method, which emulates changing of subscriptions in Realm. The queries were defined in the previous cache query setup section of this document.  
 
-A [_previousItemsMap]() property is defined in the CouchbaseSyncRepository is used to track the previous items in the list so that the changes can be calculated.
+If the subscription mode is configured to filter documents by the current user, the query targets documents where the ownerId field matches the user’s ID. In the case of the “All” mode, it retrieves all documents from the data.items collection, sorted by their document IDs. The query is then executed, returning the results as a Flow of ResultsChange<Item> objects.
 
-The `mapQueryChangeToItem` method is used to convert the QueryChange object to a ResultsChange<Item> object by using the Kotlin serialization library to deserialize the JSON string that is returned from the query.  A 
+The `mapQueryChangeToItem` method is used to convert the QueryChange object to a ResultsChange<Item> object by using the Kotlin serialization library to deserialize the JSON string that is returned from the query.   
 
 ```kotlin
  private fun mapQueryChangeToItem(queryChange: QueryChange): ResultsChange<Item> {
@@ -372,8 +378,11 @@ The `mapQueryChangeToItem` method is used to convert the QueryChange object to a
 }
 ```
 
-> [!NOTE]
->To replicate the ResultsChange API from Realm, implement a Live Query in conjunction with a locally maintained list of previous query results. Calculate the deltas (additions, deletions, and updates) by comparing the current query results with the previous list. This approach introduces additional complexity and requires more code than the original implementation.
+> **NOTE**
+>To replicate the ResultsChange API from Realm, this code had to calculate the deltas (additions, deletions, and updates) by comparing the current query results with the previous list results. This approach introduces additional complexity and requires more code than the original implementation.  Using the LiveQuery API directly would be more efficient, but each time the data is updated, the entire list would be re-rendered.  This could cause performance issues in the application.  
+>
+>There are multiple approaches to how to calculate the deltas, this example will use more memory in order to save CPU cycles, which results in better performance on older devices with slower processors.
+>
 
 ### toggleIsComplete method
 
