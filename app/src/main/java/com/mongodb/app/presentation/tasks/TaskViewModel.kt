@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 
 object TaskViewEvent
 
-class TaskViewModel constructor(
+class TaskViewModel(
     private val repository: SyncRepository,
     val taskListState: SnapshotStateList<Item> = mutableStateListOf()
 ) : ViewModel() {

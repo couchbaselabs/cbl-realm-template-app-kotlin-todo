@@ -135,6 +135,7 @@ app.currentUser?.let { currentUser ->
   this.collection = this.database.createCollection("items", "data")
 ```
 
+#### Index Setup 
 An index is created to help speed up the query where tasks are filtered out by the ownerId field.  This is done by calling the createIndex method on the collection object.
 
 ```kotlin
@@ -145,7 +146,7 @@ if (indexOwnerId == null) {
   this.collection.createIndex("idxTasksOwnerId", idxOwnerId)
 }
 ```
-
+#### Replicator Setup 
 Next the [Replication Configuration](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-cfg-repl) is created using the Endpoint URL that is provided from the resource file described earlier in this document.  The configuration is setup in a [PULL_AND_PUSH](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-cfg-sync) configuration which means it will pull changes from the remote database and push changes to Capella App Services. By setting continuous to true the replicator will continue to listen for changes and replicate them.  
 
 ```kotlin
@@ -165,7 +166,7 @@ val auth =
 replicatorConfig.authenticator = auth
 ```
 
-
+#### Replicator Status 
 A change listener for [Replication Status](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-repl-status) is created and is used to track any errors that might happen from replication, which is then logged via the passed in onError closure.
 
 ```kotlin
@@ -181,6 +182,7 @@ this.statusChangeToken = this.replicator.addChangeListener { change ->
 >Android Developers should review the documentation on Ordering of replication events in the [Couchbase Lite SDK documentation for Kotlin](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-repl-ord) prior to making decisions on how to setup the replicator in environments with heavy replication traffic.
 >
 
+#### Cached Query Setup 
 Finally we setup our two basic queries for the application.  One to get the current users tasks and one to get all tasks. Queries are compiled when created from the `database.createQuery` method.  By initializing the query when the repository is intialized, we can use the query later in the application without having to recompile the query each time the getTasksList method is run. 
 
 ```kotlin
@@ -191,6 +193,9 @@ queryString += "WHERE item.ownerId = '${currentUser.username}' "
 queryString += "ORDER BY META().id ASC"
 this.queryMyTasks = this.database.createQuery(queryString)
 ```
+
+Caching queries aren't required, but can save memory and CPU time if the same query is run multiple times.  
+
 ### addTask method
 
 The addTask method was  implemented to add a task to the CouchbaseLite Database using JSON serialization.  The method is shown below:
@@ -280,7 +285,7 @@ Couchbase Lite has a different way of handing replication and security than the 
 >
 >The Couchbase Lite SDK [Replication Configuration](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-cfg-repl) API also supports [filtering of channels](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-repl-chan) to limit the data that is replicated to the device. 
 
-For the conversion of this app, the decision was made to emulate the Realm SDK ResultsChange API.  A new interface and class implementations where added to the ResultsChange.kt file.
+For the conversion of this app, the decision was made to include code that functions similar to the Realm SDK ResultsChange API.  A new interface and class implementations where added to the [ResultsChange.kt](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/data/ResultsChange.kt#L3) file.
 
 ```kotlin
 interface ResultsChange<T>
@@ -303,15 +308,13 @@ class UpdatedResults<T> : ResultsChange<T> {
 The getTaskList method was implemented using a LiveQuery as shown below:
 
 ```kotlin
-override fun getTaskList(subscriptionType: SubscriptionType): Flow<List<Item>> {
-  var queryString = "SELECT * FROM data.items as item "
-  if (subscriptionType == SubscriptionType.MINE) {
-    val currentUser = app.currentUser?.username
-    queryString += "WHERE item.ownerId = '$currentUser' "
-  }
-  queryString += "ORDER BY META().id ASC"
-  val query = this.database.createQuery(queryString)
-  val flow = query
+override fun getTaskList(subscriptionType: SubscriptionType): Flow<ResultsChange<Item>> {
+ this._previousItemsMap = mutableMapOf()
+ val query = when (subscriptionType) {
+   SubscriptionType.MINE -> queryMyTasks
+   SubscriptionType.ALL -> queryAllTasks
+ }
+ val flow = query
     .queryChangeFlow()
     .map { qc -> mapQueryChangeToItem(qc) }
     .flowOn(Dispatchers.IO)
@@ -320,21 +323,53 @@ override fun getTaskList(subscriptionType: SubscriptionType): Flow<List<Item>> {
 }
 ```
 
-This code constructs a dynamic SQL++ query based on the provided subscription mode. If the mode is configured to filter documents by the current user, the query targets documents where the ownerId field matches the user’s ID. In the case of the “All” mode, it retrieves all documents from the data.items collection, sorted by their document IDs. The query is then executed, returning the results as a Flow of List<Item> objects.
+This code runs a live query based on the SubscriptionType passed into the method, which emulates changing of subscriptions in Realm. If the subscription mode is configured to filter documents by the current user, the query targets documents where the ownerId field matches the user’s ID. In the case of the “All” mode, it retrieves all documents from the data.items collection, sorted by their document IDs. The query is then executed, returning the results as a Flow of ResultsChange<Item> objects.
 
-The mapQueryChangeToItem method is used to convert the QueryChange object to a List<Item> object by using the Kotlin serialization library to deserialize the JSON string that is returned from the query.
+A [_previousItemsMap]() property is defined in the CouchbaseSyncRepository is used to track the previous items in the list so that the changes can be calculated.
+
+The `mapQueryChangeToItem` method is used to convert the QueryChange object to a ResultsChange<Item> object by using the Kotlin serialization library to deserialize the JSON string that is returned from the query.  A 
 
 ```kotlin
-   private fun mapQueryChangeToItem(queryChange: QueryChange): List<Item> {
-        val items = mutableListOf<Item>()
-        queryChange.results?.let { results ->
-            results.forEach { result ->
-                val item = Json.decodeFromString<ItemDao>(result.toJSON()).item
-                items.add(item)
-            }
-        }
-        return items
+ private fun mapQueryChangeToItem(queryChange: QueryChange): ResultsChange<Item> {
+  val isInitial = _previousItemsMap.isEmpty()
+  val initialResults = InitialResults<Item>()
+  val updatedResults = UpdatedResults<Item>()
+
+  // used to track the current items which will
+  // become the next previousItemMap after this is complete
+  val currentItemsMap = mutableMapOf<String, Item>()
+
+  // used to trim out items
+  // anything left over is a deletion
+  val previousItemsSet = _previousItemsMap.keys.toMutableSet()
+  //loop through the query change results
+  queryChange.results?.let { results ->
+   results.forEach { result ->
+    val item = Json.decodeFromString<ItemDao>(result.toJSON()).item
+    currentItemsMap[item.id] = item
+    if (isInitial) {
+     initialResults.list.add(item)
+    } else {
+     val previousItem = _previousItemsMap[item.id]
+     when {
+      previousItem == null -> updatedResults.insertions.add(item)
+      item != previousItem -> updatedResults.changes.add(item)
+     }
+      previousItemsSet.remove(item.id)
+     }
     }
+   }
+   if (!isInitial) {
+   // Determine deletions
+   previousItemsSet.forEach { id ->
+    _previousItemsMap[id]?.let { updatedResults.deletions.add(it) }
+   }
+  }
+  _previousItemsMap.clear()  
+  _previousItemsMap.putAll(currentItemsMap)  
+
+  return if (isInitial) initialResults else updatedResults
+}
 ```
 
 > [!NOTE]
