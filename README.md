@@ -381,7 +381,7 @@ The `mapQueryChangeToItem` method is used to convert the QueryChange object to a
 > **NOTE**
 >To replicate the ResultsChange API from Realm, this code had to calculate the deltas (additions, deletions, and updates) by comparing the current query results with the previous list results. This approach introduces additional complexity and requires more code than the original implementation.  Using the LiveQuery API directly would be more efficient, but each time the data is updated, the entire list would be re-rendered.  This could cause performance issues in the application.  
 >
->There are multiple approaches to how to calculate the deltas, this example will use more memory in order to save CPU cycles, which results in better performance on older devices with slower processors.
+>There are multiple approaches to how to calculate the deltas.  This example will use more memory in order to save CPU cycles, which in testing on physical devices resulted in better performance on older devices with slower processors.
 >
 
 ### toggleIsComplete method
