@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Couchbase Mobile App</string>
+    <string name="app_name">ToDo</string>
     <!-- Strings related to login -->
     <string name="prompt_email">Email</string>
     <string name="prompt_password">Password</string>

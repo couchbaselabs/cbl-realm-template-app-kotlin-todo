@@ -1,4 +1,4 @@
 <resources>
-  <string name="capella_app_endpoint_url">wss://1oooidqy0vm9-t3y.apps.cloud.couchbase.com:4984/tasks</string>
+  <string name="capella_app_endpoint_url">wss://xxxxxxxxxxxx.apps.cloud.couchbase.com:4984/tasks</string>
   <string name="capella_url">https://cloud.capella.com</string>
 </resources>
