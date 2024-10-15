@@ -126,13 +126,9 @@ class CouchbaseSyncRepository(
                     .lowercase(Locale.getDefault())
                 this.database = Database("items${username}", dbConfig)
 
-                //create collection
-                val checkCollection = this.database.getCollection("tasks", "data")
-                if (checkCollection == null) {
-                    this.collection = this.database.createCollection("tasks", "data")
-                } else {
-                    this.collection = checkCollection
-                }
+                //get the collection - create collection with either create a collection
+                //or if it already exist, return the existing collection
+                this.collection = this.database.createCollection("tasks", "data")
 
                 //create index - check to see if it's created, if not create it
                 val indexOwnerId = this.collection.getIndex("idxTasksOwnerId")
@@ -186,22 +182,19 @@ class CouchbaseSyncRepository(
      * Adds a task that belongs to the current user using the specified [taskSummary].
      */
     override suspend fun addTask(taskSummary: String) {
-        if (app.currentUser == null) {
-            throw IllegalStateException("User must be logged in to add a task")
-        }
-        app.currentUser?.let { user ->
-            val task = Item(
-                ownerId = user.username,
-                summary = taskSummary
-            )
-            withContext(Dispatchers.IO) {
-                try {
-                    val json = task.toJson()
-                    val mutableDoc = MutableDocument(task.id, json)
-                    collection.save(mutableDoc)
-                } catch (e: Exception) {
-                    onError(e)
-                }
+        val user =
+            app.currentUser ?: throw IllegalStateException("User must be logged in to add a task")
+        val task = Item(
+            ownerId = user.username,
+            summary = taskSummary
+        )
+        withContext(Dispatchers.IO) {
+            try {
+                val json = task.toJson()
+                val mutableDoc = MutableDocument(task.id, json)
+                collection.save(mutableDoc)
+            } catch (e: Exception) {
+                onError(e)
             }
         }
     }
@@ -221,14 +214,13 @@ class CouchbaseSyncRepository(
     override suspend fun deleteTask(task: Item) {
         withContext(Dispatchers.IO) {
             try {
-                val doc = collection.getDocument(task.id)
-                doc?.let {
+                collection.getDocument(task.id)?.let { doc ->
                     //handle security of the owner only being able to delete their own tasks
                     val ownerId = doc.getString("ownerId")
                     if (ownerId != task.ownerId) {
                         onError(IllegalStateException("User does not have permission to delete this task"))
                     } else {
-                        collection.delete(it)
+                        collection.delete(doc)
                     }
                 }
             } catch (e: Exception) {
@@ -317,8 +309,7 @@ class CouchbaseSyncRepository(
     override suspend fun toggleIsComplete(task: Item) {
         withContext(Dispatchers.IO) {
             try {
-                val doc = collection.getDocument(task.id)
-                doc?.let {
+                collection.getDocument(task.id)?.let { doc ->
                     //handle security of the owner only being able to update their own tasks
                     val ownerId = doc.getString("ownerId")
                     if (ownerId != task.ownerId) {
@@ -356,7 +347,6 @@ class CouchbaseSyncRepository(
     override fun resumeSync() {
         this.replicator.start()
     }
-
 }
 
 /**
