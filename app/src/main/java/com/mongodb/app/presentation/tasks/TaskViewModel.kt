@@ -71,8 +71,8 @@ class TaskViewModel(
                         if (event.changes.isNotEmpty()) {
                             event.changes.forEach {
                                 val currentItem = taskListState.find { task -> task.id == it.id }
-                                taskListState.remove(currentItem)
-                                taskListState.add(it)
+                                val index = taskListState.indexOf(currentItem)
+                                taskListState[index] = it
                             }
                         }
                     }
