@@ -4,7 +4,7 @@ The original version of this [application](https://github.com/mongodb/template-a
 
 This repository provides a converted version of the application using Couchbase Mobile ([Couchbase Lite for Android SDK](https://docs.couchbase.com/couchbase-lite/current/android/gs-prereqs.html) along with [Capella App Services](https://docs.couchbase.com/cloud/app-services/index.html)).  
 
-> **NOTE**
+> [!NOTE]
 >The original application is a basic To Do list.  The original source code has it's own opinionated way of implementing an Android application and communicating between different layers.  This conversion is by no means a best practice for Android development or a show case on how to properly communicate between layers of an application.  It's more of an example of the process that a developer will have to go through to convert an application from one SDK to another.
 >
 
@@ -176,6 +176,10 @@ val replicatorConfig = ReplicatorConfigurationFactory.newConfig(
 replicatorConfig.collections.add(this.collection)
 ```
 
+> [!TIP]
+>The Couchbase Lite SDK [Replication Configuration](https://docs.couchbase.com/couchbase-lite/current/swift/replication.html#lbl-cfg-repl) API also supports [filtering of channels](https://docs.couchbase.com/couchbase-lite/current/swift/replication.html#lbl-repl-chan) to limit the data that is replicated to the device. 
+>
+
 Authentication is added to only sync information based on the current authenticated user.
 
 ```kotlin
@@ -196,7 +200,7 @@ this.statusChangeToken = this.replicator.addChangeListener { change ->
 }
 ```
 
-> [!NOTE]
+> [!IMPORTANT]
 >Android Developers should review the documentation on Ordering of replication events in the [Couchbase Lite SDK documentation for Kotlin](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-repl-ord) prior to making decisions on how to setup the replicator in environments with heavy replication traffic.
 >
 
@@ -236,7 +240,7 @@ app.currentUser?.let { user ->
 }
 ```
 
-Note that database operations are executed on Dispatchers.IO to avoid blocking the main thread. The task is serialized into a JSON string using the Kotlin serialization library and then saved to the collection via the [MutableDocument](https://docs.couchbase.com/couchbase-lite/current/android/document.html#constructing-a-document) object.  If an error occurs, the onError callback is triggered with the exception that was thrown.
+Note that database operations are executed on [Dispatchers.IO](https://developer.android.com/kotlin/coroutines/coroutines-adv?authuser=1) to avoid blocking the main thread. The task is serialized into a JSON string using the Kotlin serialization library and then saved to the collection via the [MutableDocument](https://docs.couchbase.com/couchbase-lite/current/android/document.html#constructing-a-document) object.  If an error occurs, the onError callback is triggered with the exception that was thrown.
 
 ### close method
 
@@ -254,15 +258,15 @@ override fun close(){
 
 In the original app, Realm was handling the security of updates to validate that the current logged in user can update its own tasks, but not other users's task.  When the switch in the application is used to see All Tasks using different subscription, they would have read-only access to the objects.  
 
-Couchbase Lite doesn't have the same security model.  Here are two ways to handle this in conversion:
+Couchbase Lite doesn't have the same security model.  In this application the following approach was taken.  
 
-1. Write custom logic in your application to validate that write access is only allowed by users that own the tasks.  This is independant of how the data is syncronized.
-
-2. Allow the write to the database even though the user doesn't have access, and then let the replicator sync the changes.  In the App Services [Access Control and Data Validation](https://docs.couchbase.com/cloud/app-services/deployment/access-control-data-validation.html) [sync function](https://docs.couchbase.com/cloud/app-services/deployment/access-control-data-validation.html), check the security there and then deny the write.  Use a Custom [Replication Conflict Resolution](https://docs.couchbase.com/couchbase-lite/current/android/conflict.html#custom-conflict-resolution) to receive the result in your applications code and then revert the change.
-
-If your app is offline for long periods of time, option 2 might not fit your security requirements. Because this app offers an offline mode, option 1 was selected for the security model in the conversion.
+The code of the application was modified to validate that write access is only allowed by users that own the tasks and the Data Access and Validation script was added in the Capella setup instructions that limits whom can write updates.
 
 To further harden the security, the App Service sync script could check the ownerId field and use the [requireUser](https://docs.couchbase.com/cloud/app-services/deployment/access-control-data-validation.html#handling-modification) function to deny writes from other users.  This would secure the data from bugs in the application and double validate that writes are only performed by the owner of the task.
+
+> [!TIP]
+> Develoeprs can use a Custom [Replication Conflict Resolution](https://docs.couchbase.com/couchbase-lite/current/swift/conflict.html#custom-conflict-resolution) to receive the result in your applications code and then revert the change.
+>
 
 ### deleteTask method
 
@@ -289,7 +293,6 @@ override suspend fun deleteTask(task: Item) {
 }
 ```
 
-
 ### getTaskList method
 
 Couchbase Lite doesn't support the [ResultsChange](https://www.mongodb.com/docs/realm-sdks/kotlin/1.0.1/library-base/-realm%20-kotlin%20-s-d-k/io.realm.kotlin.notifications/-results-change/index.html) pattern that Realm provides for tracking changes in a Realm.  Instead Couchbase Lite has an API called [LiveQuery](https://docs.couchbase.com/couchbase-lite/current/android/query-live.html#activating-a-live-query)
@@ -299,9 +302,8 @@ If any information in the query results has changed, the query is run again and 
 Couchbase Lite has a different way of handing replication and security than the Atlas Device SDK [Subscription API](https://www.mongodb.com/docs/atlas/device-sdks/sdk/kotlin/sync/subscribe/#subscriptions-overview).  Because of this, some of the code has been simplifed to handle when filtering out the current user tasks vs all tasks in the collection.
 
 > [!IMPORTANT]
->For a production mobile app, make sure you read the Couchbase Capella App Services [channels](https://docs.couchbase.com/cloud/app-services/channels/channels.html) and [roles](https://docs.couchbase.com/cloud/app-services/user-management/create-app-role.html) documentation to understand the security model it provides. 
+>Developers should review the Couchbase Capella App Services [channels](https://docs.couchbase.com/cloud/app-services/channels/channels.html) and [roles](https://docs.couchbase.com/cloud/app-services/user-management/create-app-role.html) documentation to understand the security model it provides prior to planning an application migration. 
 >
->The Couchbase Lite SDK [Replication Configuration](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-cfg-repl) API also supports [filtering of channels](https://docs.couchbase.com/couchbase-lite/current/android/replication.html#lbl-repl-chan) to limit the data that is replicated to the device. 
 
 For the conversion of this app, the decision was made to include code that functions similar to the Realm SDK ResultsChange API.  A new interface and class implementations where added to the [ResultsChange.kt](https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo/blob/main/app/src/main/java/com/mongodb/app/data/ResultsChange.kt#L3) file.
 
@@ -319,7 +321,7 @@ class UpdatedResults<T> : ResultsChange<T> {
 }
 ```
 
-> **NOTE**
+> [!NOTE]
 > This represents a partial implementation of the ResultsChange API. It is designed to maintain the application’s operational integrity without necessitating substantial code rewrites or altering the user experience associated with rendering items in the list during addition or deletion processes.
 >
 
@@ -396,7 +398,7 @@ The `mapQueryChangeToItem` method is used to convert the QueryChange object to a
 }
 ```
 
-> **NOTE**
+> [!NOTE]
 >To replicate the ResultsChange API from Realm, this code had to calculate the deltas (additions, deletions, and updates) by comparing the current query results with the previous list results. This approach introduces additional complexity and requires more code than the original implementation.  Using the LiveQuery API directly would be more efficient, but each time the data is updated, the entire list would be re-rendered.  This could cause performance issues in the application.  
 >
 >There are multiple approaches to how to calculate the deltas.  This example will use more memory in order to save CPU cycles, which in testing on physical devices resulted in better performance on older devices with slower processors.
@@ -489,8 +491,6 @@ More Information
 ----------------
 - [Couchbase Lite for Android documentation](https://docs.couchbase.com/couchbase-lite/current/android/quickstart.html)
 - [Couchbase Capella App Services documentation](https://docs.couchbase.com/cloud/app-services/index.html)
-
-
 
 Disclaimer
 ----------
