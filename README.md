@@ -1,6 +1,6 @@
 ﻿# Conversion Example of MongoDb Atlas Device Sync to Couchbase Lite for Android Developers 
 
-The original version of this [application](https://github.com/mongodb/template-app-kotlin-todo)  was built with the [MongoDb Atlas Device SDK](https://www.mongodb.com/docs/atlas/device-sdks/sdk/kotlin/) and [Atlas Device Sync](https://www.mongodb.com/docs/atlas/app-services/sync/).  
+The original version of this [application](https://github.com/mongodb/template-app-kotlin-todo)  was built with the [MongoDb Atlas Device SDK for Kotlin](https://www.mongodb.com/docs/atlas/device-sdks/sdk/kotlin/) and [Atlas Device Sync](https://www.mongodb.com/docs/atlas/app-services/sync/).  
 
 This repository provides a converted version of the application using Couchbase Mobile ([Couchbase Lite for Android SDK](https://docs.couchbase.com/couchbase-lite/current/android/gs-prereqs.html) along with [Capella App Services](https://docs.couchbase.com/cloud/app-services/index.html)).  
 
@@ -9,6 +9,19 @@ This repository provides a converted version of the application using Couchbase 
 >
 
 Some minior UI changes were made to remove wording about Realm and replaced with Couchbase.
+
+# Requirements
+- [Android Studio Ladybug | 2024.2.1 Patch 1](https://developer.android.com/studio) or later 
+- Basic [Kotlin](https://developer.android.com/kotlin) and [Jetpack Compose](https://developer.android.com/compose) knowledge
+- Understanding of the [Realm SDK for Kotlin](https://www.mongodb.com/docs/atlas/device-sdks/sdk/kotlin/)
+
+# Fetching the App Source Code
+
+Clone this repository from GitHub using the command line or your Git client:
+
+```bash
+git clone https://github.com/couchbaselabs/cbl-realm-template-app-kotlin-todo.git
+```
 
 # Capella Configuration
 
