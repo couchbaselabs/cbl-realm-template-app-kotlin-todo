@@ -55,15 +55,11 @@ class CBLiteApp(val endpointUrl: String, val filesDir: String){
     }
 
     private fun isUrlReachable(urlString: String): Boolean {
-        return try {
             val url = URL(urlString)
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "HEAD"
             connection.connectTimeout = 5000
             connection.readTimeout = 5000
-            connection.responseCode == HttpURLConnection.HTTP_OK
-        } catch (e: Exception) {
-            return false
-        }
+            return connection.responseCode == HttpURLConnection.HTTP_OK
     }
 }
